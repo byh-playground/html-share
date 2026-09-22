@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>HTML Share — 사용 설명서</title>
+        <style>
+            :root {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    'Segoe UI',
+                    sans-serif;
+                color: #252525;
+                line-height: 1.8;
+                background: #f1f3f3;
+                --green: #008275;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+            }
+            a {
+                color: #007a70;
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
+            header {
+                background: var(--green);
+                color: white;
+                padding: 12px max(20px, calc((100% - 1100px) / 2));
+                display: flex;
+                justify-content: space-between;
+                gap: 20px;
+            }
+            header a {
+                color: white;
+                font-weight: 700;
+            }
+            .layout {
+                max-width: 1100px;
+                margin: 24px auto;
+                display: grid;
+                grid-template-columns: 220px minmax(0, 1fr);
+                gap: 20px;
+                padding: 0 16px;
+            }
+            nav {
+                align-self: start;
+                position: sticky;
+                top: 16px;
+                background: white;
+                border: 1px solid #cbd2d1;
+                padding: 18px;
+                font-size: 14px;
+            }
+            nav ol {
+                padding-left: 24px;
+                margin-bottom: 0;
+            }
+            nav li {
+                padding: 3px 0;
+            }
+            main {
+                background: white;
+                border: 1px solid #cbd2d1;
+                padding: 30px 36px;
+                min-width: 0;
+            }
+            h1 {
+                font-size: 32px;
+                margin: 0 0 8px;
+                letter-spacing: -1px;
+            }
+            .subtitle {
+                color: #6b7371;
+                margin-top: 0;
+            }
+            .category {
+                font-size: 13px;
+                border: 1px solid #ddd;
+                padding: 5px 12px;
+            }
+            .infobox {
+                border: 2px solid var(--green);
+                width: 100%;
+                border-collapse: collapse;
+                margin: 22px 0;
+            }
+            .infobox caption {
+                background: var(--green);
+                color: white;
+                font-size: 19px;
+                font-weight: bold;
+                padding: 8px;
+            }
+            .infobox th {
+                background: #e8f4f1;
+                width: 110px;
+            }
+            td,
+            th {
+                border: 1px solid #d1d9d7;
+                padding: 8px 12px;
+                text-align: left;
+                vertical-align: top;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                font-size: 14px;
+            }
+            h2 {
+                font-size: 23px;
+                border-bottom: 1px solid #bbb;
+                padding-bottom: 5px;
+                margin-top: 38px;
+                scroll-margin-top: 16px;
+            }
+            h2 .num {
+                color: var(--green);
+                margin-right: 8px;
+            }
+            h3 {
+                font-size: 18px;
+            }
+            pre {
+                background: #f6f7f7;
+                border: 1px solid #d9dfdd;
+                padding: 14px;
+                overflow: auto;
+                font-size: 13px;
+                line-height: 1.65;
+                tab-size: 4;
+            }
+            code {
+                font-family: Consolas, monospace;
+                overflow-wrap: anywhere;
+            }
+            p code,
+            li code,
+            td code {
+                background: #f1f3f3;
+                padding: 2px 4px;
+                font-size: 0.9em;
+            }
+            .note {
+                border-left: 4px solid var(--green);
+                background: #edf8f5;
+                padding: 12px 16px;
+            }
+            .caution {
+                border-left-color: #c29039;
+                background: #fff8e9;
+            }
+            details {
+                border: 1px solid #d7dddb;
+                padding: 12px 16px;
+                margin: 12px 0;
+            }
+            summary {
+                cursor: pointer;
+                font-weight: 600;
+            }
+            footer {
+                border-top: 1px solid #ddd;
+                margin-top: 35px;
+                padding-top: 14px;
+                font-size: 13px;
+                color: #66706c;
+            }
+            .table-scroll {
+                overflow: auto;
+            }
+            a:focus-visible,
+            summary:focus-visible {
+                outline: 3px solid #d6ae39;
+                outline-offset: 3px;
+            }
+            @media (max-width: 760px) {
+                .layout {
+                    display: block;
+                    padding: 0 10px;
+                    margin: 12px auto;
+                }
+                nav {
+                    position: static;
+                    margin-bottom: 12px;
+                }
+                nav ol {
+                    columns: 2;
+                    column-gap: 24px;
+                }
+                main {
+                    padding: 22px 18px;
+                }
+                h1 {
+                    font-size: 28px;
+                }
+                h2 {
+                    font-size: 21px;
+                }
+                .table-scroll table {
+                    min-width: 440px;
+                }
+                header {
+                    padding: 10px 16px;
+                    font-size: 14px;
+                }
+            }
+            @media print {
+                header,
+                nav {
+                    display: none;
+                }
+                .layout {
+                    display: block;
+                    margin: 0;
+                    padding: 0;
+                }
+                main {
+                    border: 0;
+                }
+                details {
+                    break-inside: avoid;
+                }
+            }
+
+            /* 나무위키 문서형 레이아웃 */
+            :root {
+                --green: #00a495;
+                background: #e9ecef;
+                color: #212529;
+                font-family: Arial, '맑은 고딕', sans-serif;
+                line-height: 1.65;
+            }
+            header {
+                min-height: 54px;
+                background: #00a495;
+                padding: 10px max(20px, calc((100% - 1200px) / 2));
+                align-items: center;
+            }
+            header > a:first-child {
+                font-size: 23px;
+                letter-spacing: -1px;
+            }
+            .layout {
+                max-width: 1200px;
+                display: block;
+                margin: 0 auto;
+                padding: 0 20px 40px;
+            }
+            main {
+                min-height: 100vh;
+                border: 1px solid #ccc;
+                border-top: 0;
+                padding: 24px 28px 40px;
+                display: flow-root;
+            }
+            h1 {
+                font-size: 36px;
+                margin: 8px 0 2px;
+                letter-spacing: -1.5px;
+            }
+            .subtitle {
+                font-size: 13px;
+                color: #777;
+                margin: 0 0 20px;
+            }
+            .document-tools {
+                display: flex;
+                justify-content: flex-end;
+                gap: 0;
+                font-size: 13px;
+            }
+            .document-tools a {
+                border: 1px solid #ccc;
+                padding: 4px 10px;
+                color: #444;
+            }
+            .document-tools a + a {
+                border-left: 0;
+            }
+            .category {
+                border: 1px solid #ccc;
+                padding: 3px 8px;
+                background: white;
+                font-size: 13px;
+                color: #008c80;
+                margin-bottom: 22px;
+            }
+            .infobox {
+                float: right;
+                width: 340px;
+                max-width: 45%;
+                margin: 0 0 24px 28px;
+                border: 2px solid #00a495;
+                font-size: 13px;
+            }
+            .infobox caption {
+                background: #00a495;
+                font-size: 22px;
+                padding: 14px;
+            }
+            .infobox th {
+                background: #e7f5f3;
+                width: 92px;
+                color: #126e65;
+            }
+            nav {
+                position: static;
+                display: table;
+                max-width: 50%;
+                min-width: 225px;
+                margin: 12px 0 30px;
+                padding: 12px 20px 15px;
+                background: #fff;
+                border: 1px solid #ccc;
+            }
+            nav > strong {
+                display: block;
+                font-size: 18px;
+                font-weight: normal;
+                margin-bottom: 5px;
+            }
+            nav ol {
+                padding-left: 22px;
+                margin-top: 0;
+                font-size: 14px;
+                columns: 1;
+            }
+            nav li {
+                padding: 0;
+                line-height: 1.8;
+            }
+            section {
+                clear: both;
+            }
+            h2 {
+                font-size: 27px;
+                border: 0;
+                margin: 0;
+                padding: 0;
+                font-weight: 700;
+                line-height: 1.6;
+            }
+            h2 .num {
+                color: #00a495;
+                margin-right: 7px;
+            }
+            h3 {
+                font-size: 21px;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 4px;
+                font-weight: 600;
+            }
+            .wiki-section {
+                border: 0;
+                margin: 30px 0 0;
+                padding: 0;
+            }
+            .wiki-section > summary {
+                list-style: none;
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                border-bottom: 1px solid #bbb;
+                padding-bottom: 3px;
+            }
+            .wiki-section > summary::-webkit-details-marker {
+                display: none;
+            }
+            .wiki-section > summary:before {
+                content: '▸';
+                font-size: 18px;
+                color: #777;
+            }
+            .wiki-section[open] > summary:before {
+                content: '▾';
+            }
+            .section-body {
+                padding: 4px 0 0 18px;
+            }
+            .section-body p {
+                margin: 12px 0;
+            }
+            .section-body details {
+                background: #fafafa;
+                border-radius: 0;
+            }
+            .note {
+                background: #f5f5f5;
+                border: 1px solid #ddd;
+                border-left: 5px solid #00a495;
+            }
+            .caution {
+                border-left-color: #e8aa31;
+            }
+            pre {
+                border-radius: 0;
+                background: #f5f5f5;
+            }
+            td,
+            th {
+                border-color: #ccc;
+            }
+            footer {
+                clear: both;
+            }
+            @media (max-width: 760px) {
+                header {
+                    padding: 8px 14px;
+                }
+                header > a:first-child {
+                    font-size: 20px;
+                }
+                .layout {
+                    padding: 0;
+                }
+                .document-tools {
+                    font-size: 12px;
+                }
+                main {
+                    padding: 18px 15px;
+                    border-left: 0;
+                    border-right: 0;
+                }
+                h1 {
+                    font-size: 30px;
+                }
+                .infobox {
+                    float: none;
+                    width: 100%;
+                    max-width: none;
+                    margin: 18px 0;
+                }
+                nav {
+                    max-width: 100%;
+                    min-width: 220px;
+                    margin: 20px 0;
+                }
+                nav ol {
+                    columns: 1;
+                }
+                h2 {
+                    font-size: 23px;
+                }
+                .section-body {
+                    padding-left: 4px;
+                }
+                .table-scroll table {
+                    min-width: 420px;
+                }
+            }
+            @media print {
+                .document-tools {
+                    display: none;
+                }
+                .infobox {
+                    max-width: 45%;
+                }
+                main {
+                    min-height: 0;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <a href="#top">HTML Share 문서</a
+            ><a href="https://github.com/byh-playground/html-share"
+                >GitHub 저장소 ↗</a
+            >
+        </header>
+        <div class="layout">
+            <main id="top">
+                <div class="document-tools">
+                    <a
+                        href="https://github.com/byh-playground/html-share/blob/main/docs/usage.html"
+                        >문서 원본</a
+                    ><a
+                        href="https://github.com/byh-playground/html-share/commits/main/docs/usage.html"
+                        >변경 내역</a
+                    >
+                </div>
+                <h1>HTML Share / 사용 설명서</h1>
+                <p class="subtitle">
+                    내 PC의 웹 파일을 공유하고 휴대폰에서 관리하는 방법
+                </p>
+                <p class="category">
+                    분류: 개인용 도구 · 웹 파일 공유 · 모바일 관리 · PWA
+                </p>
+                <table class="infobox">
+                    <caption>
+                        HTML Share
+                    </caption>
+                    <tbody>
+                        <tr>
+                            <th>실행 환경</th>
+                            <td>
+                                Windows 10/11 64비트 · PowerShell 5.1 이상 ·
+                                Node.js 22.17 이상
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>지원 파일</th>
+                            <td>
+                                HTML · HTM · ZIP / PWA 활성화 후에는 HTML · HTM
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>기본 포트</th>
+                            <td>8787</td>
+                        </tr>
+                        <tr>
+                            <th>외부 접속</th>
+                            <td>Cloudflare Quick Tunnel 또는 ngrok</td>
+                        </tr>
+                        <tr>
+                            <th>관리 방식</th>
+                            <td>
+                                소유자 한 명의 비공개 관리 링크 · QR · 선택형
+                                ntfy
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <nav aria-label="문서 목차">
+                    <strong>목차</strong>
+                    <ol>
+                        <li><a href="#overview">개요</a></li>
+                        <li><a href="#install">설치와 첫 실행</a></li>
+                        <li><a href="#tunnel">터널 선택</a></li>
+                        <li><a href="#project">프로젝트 만들기</a></li>
+                        <li><a href="#upload">업로드와 버전 관리</a></li>
+                        <li><a href="#pwa">PWA 설정</a></li>
+                        <li><a href="#share">QR과 관리 링크</a></li>
+                        <li><a href="#ntfy">ntfy 알림</a></li>
+                        <li><a href="#commands">명령어 모음</a></li>
+                        <li><a href="#faq">문제 해결</a></li>
+                    </ol>
+                </nav>
+                <section id="overview">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">1.</span>개요</h2>
+                        </summary>
+                        <div class="section-body">
+                            <p>
+                                HTML Share는 내 PC에서 서버를 실행하고,
+                                휴대폰으로 HTML·ZIP을 업로드한 뒤 결과를
+                                확인하는 도구다. 방문자에게는 프로젝트 페이지
+                                링크만 전달한다. 서버 PC가 꺼지거나 절전 상태가
+                                되면 외부 접속도 중단된다.
+                            </p>
+                            <p class="note">
+                                기본 흐름:
+                                <strong
+                                    >서버 실행 → 관리 QR 스캔 → 프로젝트 선택 →
+                                    업로드 후 페이지 열기 → 뒤로 가서 수정본
+                                    업로드</strong
+                                >
+                            </p>
+                            <p>
+                                직접 만들었거나 신뢰하는 파일만 올린다.
+                                프로젝트별 경로는 있지만 서로 신뢰하지 않는 여러
+                                업로더를 격리하는 서비스는 아니다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="install">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">2.</span>설치와 첫 실행</h2>
+                        </summary>
+                        <div class="section-body">
+                            <p>
+                                Node.js 22.17 이상을 설치한 뒤 PowerShell에서
+                                저장소를 받는다. Node.js 24 LTS를 권장한다.
+                            </p>
+                            <pre><code>git clone https://github.com/byh-playground/html-share.git
+cd html-share
+.\share.ps1 setup -Provider cloudflare
+.\share.ps1 start -Provider cloudflare</code></pre>
+                            <p>
+                                계정 없이 Quick Tunnel 주소와 비공개 관리 QR을
+                                받을 수 있다. 휴대폰 카메라로 QR을 스캔하면 관리
+                                화면이 열린다. 선택한 제공자는 저장되므로
+                                다음부터는 아래 명령만 사용한다.
+                            </p>
+                            <pre><code>.\share.ps1 start
+.\share.ps1 status
+.\share.ps1 stop</code></pre>
+                            <p>
+                                터미널 창을 닫아도 백그라운드 실행은 계속된다.
+                                종료는
+                                <code>stop</code>으로 한다.
+                            </p>
+                            <details>
+                                <summary>
+                                    PowerShell이 스크립트 실행을 차단할 때
+                                </summary>
+                                <pre><code>powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\share.ps1 setup -Provider cloudflare</code></pre>
+                                <p>
+                                    마지막 명령과 옵션을 필요한 작업으로 바꾼다.
+                                    시스템 전체 실행 정책을 바꿀 필요는 없다.
+                                </p>
+                            </details>
+                        </div>
+                    </details>
+                </section>
+                <section id="tunnel">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">3.</span>터널 선택</h2>
+                        </summary>
+                        <div class="section-body">
+                            <h3>3.1. Cloudflare Quick Tunnel</h3>
+                            <pre><code>.\share.ps1 start -Provider cloudflare</code></pre>
+                            <p>
+                                Cloudflare 계정이나 도메인이 필요 없다. 필요한
+                                실행 파일은 자동 설치하며, npm 의존성은 먼저
+                                <code>setup</code>으로 준비해야 한다. 실행 중인
+                                ngrok에서 전환해도 원본과 관리 키는 유지된다.
+                            </p>
+                            <p class="note caution">
+                                재생성하면 주소가 바뀔 수 있다. ntfy를 설정하면
+                                새 링크를 받을 수 있다. 예전 도메인으로 설치한
+                                PWA는 새 도메인으로 자동 이전되지 않는다.
+                            </p>
+                            <p>
+                                터널 프로세스가 종료되면 자동 재시작한다. ntfy
+                                주소 알림 실패는 재시도한다. 프로세스가 유지되는
+                                동안 같은 주소로 연결만 복구되면 알림을 반복하지
+                                않는다.
+                            </p>
+                            <h3>3.2. ngrok</h3>
+                            <pre><code>.\share.ps1 setup -Provider ngrok
+.\share.ps1 start -Provider ngrok</code></pre>
+                            <ol>
+                                <li>
+                                    첫 실행의 안내에 따라 ngrok 계정으로
+                                    로그인한다.
+                                </li>
+                                <li>
+                                    <a
+                                        href="https://dashboard.ngrok.com/get-started/your-authtoken"
+                                        >Your Authtoken</a
+                                    >에서 토큰 값만 복사한다.
+                                </li>
+                                <li>
+                                    PowerShell에 붙여넣고 Enter를 누른다. 입력이
+                                    보이지 않는 것은 정상이다.
+                                </li>
+                                <li>
+                                    휴대폰에 안내 화면이 나오면
+                                    <strong>Visit Site</strong>를 누른다.
+                                </li>
+                            </ol>
+                            <p>
+                                API 키나 명령 전체를 붙여넣지 않는다. 토큰은
+                                로컬에 저장되며, 재설정은
+                                <code>.\share.ps1 configure</code>로 한다. ngrok
+                                토큰과 관리 링크의 인증 키는 별개다.
+                            </p>
+                            <p>
+                                선택 이력이 없는 설치의 기본값은 ngrok이다. 이후
+                                <code>start</code>는 마지막 제공자를 사용한다.
+                                한도 초기화 후 ngrok으로 돌아가려면 직접
+                                <code>start -Provider ngrok</code>을 실행한다.
+                            </p>
+                            <h3>3.3. 로컬 전용 실행</h3>
+                            <pre><code>npm ci --ignore-scripts
+.\share.ps1 stop
+.\share.ps1 local
+.\share.ps1 manage -Local</code></pre>
+                            <p>
+                                공개 목록은 <code>http://127.0.0.1:8787</code>,
+                                업로드는 출력된 로컬 관리 링크로 연다. 외부 공유
+                                중 <code>local</code>만 실행하면 기존 터널은
+                                유지된다. 로컬 전용으로 바꾸려면 먼저
+                                <code>stop</code>을 사용한다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="project">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">4.</span>프로젝트 만들기</h2>
+                        </summary>
+                        <div class="section-body">
+                            <pre><code>New-Item -ItemType Directory -Path public/my-project</code></pre>
+                            <p>
+                                관리 화면의 프로젝트 목록을 새로고침하고
+                                <code>my-project</code>를 선택한다. 공개 주소는
+                                <code>https://터널주소/my-project/</code>다.
+                                PC에서 프로젝트 폴더에 HTML·ZIP을 직접 넣어도
+                                된다.
+                            </p>
+                            <ul>
+                                <li>
+                                    파일명과 무관하게 수정일이 가장 최근인
+                                    HTML·HTM·ZIP을 선택한다.
+                                </li>
+                                <li>
+                                    HTML과 ZIP의 수정일이 같으면 ZIP이 우선한다.
+                                </li>
+                                <li>
+                                    선택된 최신 ZIP만 압축을 풀어 관련 자원과
+                                    함께 제공한다.
+                                </li>
+                                <li>
+                                    공개 루트에는 프로젝트 목록만 표시된다.
+                                    루트에 HTML을 직접 넣지 않는다.
+                                </li>
+                                <li>
+                                    PWA를 활성화한 프로젝트의 원본 경로는
+                                    <code>projects/프로젝트명/uploads</code>로
+                                    바뀐다.
+                                </li>
+                            </ul>
+                        </div>
+                    </details>
+                </section>
+                <section id="upload">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2>
+                                <span class="num">5.</span>업로드와 버전 관리
+                            </h2>
+                        </summary>
+                        <div class="section-body">
+                            <p>
+                                상단에서 선택한 프로젝트를 네 개의 탭이 공통으로
+                                사용한다.
+                            </p>
+                            <div class="table-scroll">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>탭</th>
+                                            <th>사용법</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <th>업로드</th>
+                                            <td>
+                                                HTML·ZIP을 고르고
+                                                <strong>업로드만 하기</strong>
+                                                또는
+                                                <strong
+                                                    >업로드 후 페이지
+                                                    열기</strong
+                                                >를 누른다.
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>적용 관리</th>
+                                            <td>
+                                                현재 파일을 확인하고, 보관 파일
+                                                재적용·원본 다운로드·최신만
+                                                남기기를 실행한다.
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>PWA 설정</th>
+                                            <td>
+                                                PWA 사용 여부와 앱 정보를
+                                                저장한다.
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>공유</th>
+                                            <td>
+                                                방문자용 페이지 QR 또는 본인용
+                                                관리 QR을 표시한다.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p>
+                                같은 이름을 올리면 새 이름으로 보관한다. 완료 전
+                                파일은 게시하지 않는다. 탭을 옮겨도 선택한
+                                파일과 작성 중인 PWA 설정은 유지된다.
+                            </p>
+                            <ul>
+                                <li>
+                                    <strong>원본 다운로드:</strong> 업로드했던
+                                    HTML·ZIP 그대로 받는다. PWA 가공본이 아니며
+                                    적용 상태와 수정일은 바뀌지 않는다.
+                                </li>
+                                <li>
+                                    <strong>이 파일 적용:</strong> 보관 파일의
+                                    수정일을 갱신해 현재 버전으로 선택한다.
+                                </li>
+                                <li>
+                                    <strong>최신만 남기기:</strong> 삭제 목록을
+                                    확인한 뒤 이전 원본 파일을 삭제한다. 필요한
+                                    버전은 먼저 다운로드한다.
+                                </li>
+                            </ul>
+                            <p>
+                                이미지·CSS·JavaScript와 프로젝트 설정은 원본
+                                정리 대상에서 제외된다. 과거 ZIP 캐시와 PWA
+                                배포본은 자동으로 정리하지 않는다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="pwa">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">6.</span>PWA 설정</h2>
+                        </summary>
+                        <div class="section-body">
+                            <ol>
+                                <li>
+                                    프로젝트를 선택하고
+                                    <strong>PWA 설정</strong> 탭을 연다.
+                                </li>
+                                <li><strong>PWA로 사용</strong>을 체크한다.</li>
+                                <li>앱 이름·설명·색상을 입력하고 저장한다.</li>
+                                <li>이후 HTML·HTM을 업로드해 업데이트한다.</li>
+                            </ol>
+                            <p>
+                                공용 템플릿으로 매니페스트와 서비스 워커를
+                                생성한다. 원본은 그대로 보존하며, PWA 프로젝트는
+                                ZIP 업로드를 받지 않는다. 체크를 해제해도 원본과
+                                설정은 유지된다.
+                            </p>
+                            <p>
+                                일반 HTML은 내용 해시로 버전을 만든다. 실행되는
+                                인라인 JavaScript의
+                                <code>PWA_BUILD_ID</code> 문자열 상수도 사용할
+                                수 있다. 임의로 업로드한 서비스 워커 등록은
+                                차단되므로 공용 PWA 기능을 사용한다.
+                            </p>
+                            <p class="note">
+                                설치 안내는 브라우저 정책에 따라 다르다. HTTPS
+                                프로젝트 주소를 Chrome 일반 탭에서 열어
+                                확인한다. 도메인이 바뀌면 설치 앱과 브라우저
+                                저장 데이터는 자동 이전되지 않는다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="share">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">7.</span>QR과 관리 링크</h2>
+                        </summary>
+                        <div class="section-body">
+                            <p>
+                                <strong
+                                    >관리 QR은 본인만, 프로젝트 QR은
+                                    방문자에게.</strong
+                                >
+                                관리 링크는 파일 업로드·설정·정리 권한을
+                                포함한다.
+                            </p>
+                            <pre><code>.\share.ps1 manage
+.\share.ps1 qr -Project my-project
+.\share.ps1 manage -Local</code></pre>
+                            <p>
+                                관리 페이지의
+                                <strong>공유 → 내 기기 연결</strong>에서도 관리
+                                QR을 볼 수 있다. 재시작은 인증 키를 바꾸지
+                                않는다. 터널 도메인이 바뀌면 전체 주소는
+                                달라진다.
+                            </p>
+                            <details>
+                                <summary>
+                                    관리 링크 자체를 새로 발급하고 싶을 때
+                                </summary>
+                                <pre><code>.\share.ps1 manage -Rotate</code></pre>
+                                <p>
+                                    서버 실행 중 사용한다. 이전 키·링크·QR은
+                                    무효화되고 새 관리 주소가 표시된다. 프로젝트
+                                    공개 주소는 유지된다.
+                                </p>
+                            </details>
+                            <p>
+                                공개 목록에는 관리 링크가 없다. 관리 API에는
+                                별도 인증이 필요하다. 다만 모든 프로젝트가 같은
+                                출처를 공유하므로 악성 HTML을 안전하게 격리하는
+                                구조는 아니다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="ntfy">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">8.</span>ntfy 알림</h2>
+                        </summary>
+                        <div class="section-body">
+                            <p>
+                                필수 기능은 아니다. 주소 유실·서버 재시작·Quick
+                                Tunnel 주소 변경 때 새 링크를 받기 위한 선택
+                                사항이다.
+                            </p>
+                            <pre><code>.\share.ps1 ntfy
+.\share.ps1 notify -Manage
+.\share.ps1 notify -Project my-project
+.\share.ps1 ntfy -Updates
+.\share.ps1 ntfy -NoUpdates
+.\share.ps1 ntfy -Disable</code></pre>
+                            <p>
+                                첫 <code>ntfy</code> 실행에서 표시되는 구독 QR로
+                                Android ntfy 앱에 토픽을 등록한다. 기존 토픽이
+                                있으면 재사용한다. <code>notify -Manage</code>는
+                                키를 재발급하지 않고 현재 링크를 다시 보낸다.
+                            </p>
+                            <p>
+                                <code>-Updates</code>는 웹 업로드·재적용·PWA
+                                설정 저장 성공 시 알림을 추가한다. 시작·주소
+                                변경 알림에는 필요하지 않다. PC에 직접 복사한
+                                파일은 자동 알림 대상이 아니며
+                                <code>notify -Project</code>로 알린다.
+                            </p>
+                            <p class="note caution">
+                                관리 버튼이 포함된 알림은 관리 링크를 외부 ntfy
+                                서비스로 전달한다. 토픽은 본인만 보관한다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="commands">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">9.</span>명령어 모음</h2>
+                        </summary>
+                        <div class="section-body">
+                            <p>
+                                전체 옵션과 예시는
+                                <code>.\share.ps1 help</code>에서 한글로
+                                확인한다. <code>-Help</code>, <code>-h</code>,
+                                <code>Get-Help .\share.ps1 -Full</code>도
+                                지원한다.
+                            </p>
+                            <div class="table-scroll">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>명령</th>
+                                            <th>역할</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <code
+                                                    >setup [-Provider
+                                                    cloudflare|ngrok]</code
+                                                >
+                                            </td>
+                                            <td>의존성과 터널 설치</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>doctor</code></td>
+                                            <td>환경·설정 확인</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code
+                                                    >start [-Provider …] [-Port
+                                                    8787]</code
+                                                >
+                                            </td>
+                                            <td>공유 시작·제공자 전환</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code>local [-Port 8787]</code>
+                                            </td>
+                                            <td>로컬 서버 실행·재사용</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>status / stop</code></td>
+                                            <td>상태 확인 / 종료</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>configure</code></td>
+                                            <td>ngrok 토큰 재설정</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code
+                                                    >manage [-Local 또는
+                                                    -Rotate]</code
+                                                >
+                                            </td>
+                                            <td>
+                                                관리 주소 확인 / 로컬 주소 / 키
+                                                재발급
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>upload</code></td>
+                                            <td>manage의 호환 명령</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code>qr [-Project 이름]</code>
+                                            </td>
+                                            <td>관리 또는 프로젝트 QR</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code>pwa -Project 이름</code>
+                                            </td>
+                                            <td>해당 프로젝트 PWA 활성화</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code>ntfy [-Topic 이름]</code>
+                                            </td>
+                                            <td>알림 구독 구성</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <code
+                                                    >notify [-Manage 또는
+                                                    -Project 이름]</code
+                                                >
+                                            </td>
+                                            <td>현재 링크 수동 전송</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p>
+                                명령 앞에는 <code>.\share.ps1</code>을 붙인다.
+                                공백이 있는 프로젝트 이름은 따옴표로 감싼다.
+                                포트 변경은 <code>stop</code> 후 실행한다.
+                            </p>
+                        </div>
+                    </details>
+                </section>
+                <section id="faq">
+                    <details class="wiki-section" open>
+                        <summary>
+                            <h2><span class="num">10.</span>문제 해결</h2>
+                        </summary>
+                        <div class="section-body">
+                            <details>
+                                <summary>
+                                    공개 목록에서 업로드 페이지가 보이지 않는다
+                                </summary>
+                                <p>
+                                    정상이다. 공개 목록은 프로젝트 링크만
+                                    제공한다.
+                                    <code>manage</code> 또는
+                                    <code>manage -Local</code>로 비공개 관리
+                                    주소를 확인한다.
+                                </p>
+                            </details>
+                            <details>
+                                <summary>ngrok 한도에 걸렸다</summary>
+                                <p>
+                                    <code>start -Provider cloudflare</code>로
+                                    전환할 수 있다. 새 도메인 링크로 접속해야
+                                    한다. 관리 URL 재발급은 ngrok 한도를
+                                    초기화하지 않는다.
+                                </p>
+                            </details>
+                            <details>
+                                <summary>휴대폰에서 예전 버전이 보인다</summary>
+                                <p>
+                                    현재 관리 페이지의 적용 파일을 확인한다.
+                                    터널 주소가 바뀌었다면 최신 ntfy 링크로
+                                    연다. 이전 주소의 설치 PWA가 오프라인 캐시를
+                                    보여 줄 수 있다. 앱 내부에 표시되는 날짜는
+                                    업로드 시각과 다를 수 있다.
+                                </p>
+                            </details>
+                            <details>
+                                <summary>큰 ZIP 업로드가 실패한다</summary>
+                                <p>
+                                    Cloudflare를 통한 요청은 업로드 크기 제한을
+                                    받는다. PC에서 <code>manage -Local</code>로
+                                    올린다. 서버의 기본 업로드 한도는 256
+                                    MiB이며 ZIP 내부 파일 수·압축 해제 크기 등의
+                                    별도 검증도 적용된다.
+                                </p>
+                            </details>
+                            <details>
+                                <summary>
+                                    로컬 주소를 휴대폰에서 열 수 없다
+                                </summary>
+                                <p>
+                                    <code>127.0.0.1</code>은 접속한 기기 자신을
+                                    가리킨다. 휴대폰에서는 외부 터널 주소의
+                                    QR이나 링크를 사용한다.
+                                </p>
+                            </details>
+                            <details>
+                                <summary>
+                                    다른 프로젝트에 파일을 올리고 싶다
+                                </summary>
+                                <p>
+                                    PC의 <code>public</code> 아래에 프로젝트
+                                    폴더를 만들고 관리 화면의 목록을
+                                    새로고침한다. 상단에서 대상 프로젝트를
+                                    선택한다.
+                                </p>
+                            </details>
+                        </div>
+                    </details>
+                </section>
+                <footer>
+                    <a href="#top">맨 위로 ↑</a> ·
+                    <a
+                        href="https://github.com/byh-playground/html-share/blob/main/docs/USAGE.ko.md"
+                        >상세 가이드 원문</a
+                    >
+                    ·
+                    <a
+                        href="https://github.com/byh-playground/html-share/blob/main/SECURITY.md"
+                        >보안 범위</a
+                    >
+                    <p>
+                        이 문서는 외부 스크립트·폰트 없이 열 수 있는 정적
+                        HTML이다. 실제 명령의 전체 옵션은 프로그램의 한글
+                        도움말을 기준으로 확인한다.
+                    </p>
+                </footer>
+            </main>
+        </div>
+    </body>
+</html>

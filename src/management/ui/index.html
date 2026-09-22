@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="referrer" content="no-referrer" />
+        <title>프로젝트 관리 · HTML Share</title>
+        <link rel="stylesheet" href="./style.css" />
+        <script src="./app.js" defer></script>
+    </head>
+    <body>
+        <main>
+            <header>
+                <a
+                    class="brand"
+                    href="/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >HTML SHARE <span>↗</span></a
+                ><span class="badge" id="auth-badge">인증 확인 중</span>
+            </header>
+            <h1>올리고, 바로 확인하세요.</h1>
+            <p class="intro">
+                HTML을 올려 페이지를 확인하고, 수정한 파일로 다시 반복하세요.
+            </p>
+
+            <section id="locked" class="card" hidden>
+                <h2>비공개 관리 QR로 열어 주세요</h2>
+                <p>
+                    PC에서 공유를 시작한 뒤 표시되는 관리 QR을 휴대폰 카메라로
+                    스캔하세요. 한 번 연결한 관리 링크는 즐겨찾기에 저장해 계속
+                    사용할 수 있습니다.
+                </p>
+                <p class="muted">
+                    QR과 링크를 다시 보려면 PC에서
+                    <code>.\share.ps1 manage</code>를 실행하세요. ntfy 앱은
+                    필요하지 않습니다.
+                </p>
+            </section>
+
+            <div id="workspace" hidden>
+                <section
+                    id="project-card"
+                    class="card project-card"
+                    aria-label="현재 프로젝트"
+                >
+                    <div class="field-heading">
+                        <label for="project">프로젝트</label
+                        ><button id="refresh" class="text-button" type="button">
+                            목록 새로고침
+                        </button>
+                    </div>
+                    <select id="project" form="upload-form" required disabled>
+                        <option value="">프로젝트 불러오는 중…</option>
+                    </select>
+                    <div id="current-project" class="current-project" hidden>
+                        <div>
+                            <span class="current-label">현재 적용</span
+                            ><strong id="current-file"></strong
+                            ><span id="current-build"></span>
+                        </div>
+                        <a
+                            id="current-open"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            hidden
+                            >페이지 확인 ↗</a
+                        >
+                    </div>
+
+                    <p id="empty-projects" class="muted" hidden>
+                        아직 프로젝트가 없습니다. PC의 public 폴더 아래에
+                        프로젝트 폴더를 만든 뒤 목록을 새로고침하세요.
+                    </p>
+                </section>
+                <nav id="tab-bar" role="tablist" aria-label="프로젝트 작업">
+                    <button
+                        id="tab-upload"
+                        type="button"
+                        role="tab"
+                        aria-controls="panel-upload"
+                        aria-selected="true"
+                        tabindex="0"
+                    >
+                        <span class="nav-icon" aria-hidden="true">↑</span
+                        ><span>업로드</span>
+                    </button>
+                    <button
+                        id="tab-files"
+                        type="button"
+                        role="tab"
+                        aria-controls="panel-files"
+                        aria-selected="false"
+                        tabindex="-1"
+                    >
+                        <span class="nav-icon" aria-hidden="true">▤</span
+                        ><span>적용 관리</span>
+                    </button>
+                    <button
+                        id="tab-pwa"
+                        type="button"
+                        role="tab"
+                        aria-controls="panel-pwa"
+                        aria-selected="false"
+                        tabindex="-1"
+                    >
+                        <span class="nav-icon" aria-hidden="true">▣</span
+                        ><span>PWA 설정</span
+                        ><span
+                            id="pwa-draft-badge"
+                            class="draft-dot"
+                            hidden
+                            aria-label="저장하지 않은 변경"
+                            >●</span
+                        >
+                    </button>
+                    <button
+                        id="tab-share"
+                        type="button"
+                        role="tab"
+                        aria-controls="panel-share"
+                        aria-selected="false"
+                        tabindex="-1"
+                    >
+                        <span class="nav-icon" aria-hidden="true">↗</span
+                        ><span>공유</span>
+                    </button>
+                </nav>
+                <p id="status" role="status" aria-live="polite"></p>
+                <section
+                    id="panel-upload"
+                    class="tab-panel"
+                    role="tabpanel"
+                    aria-labelledby="tab-upload"
+                >
+                    <section
+                        id="result"
+                        class="card success"
+                        hidden
+                        tabindex="-1"
+                    >
+                        <span class="success-label">업로드 완료</span>
+                        <h2 id="result-project"></h2>
+                        <p id="result-file"></p>
+                        <p id="result-build" class="muted"></p>
+                        <a
+                            id="open-latest"
+                            class="primary link-button"
+                            rel="noreferrer"
+                            >지금 페이지 확인 →</a
+                        >
+                        <a
+                            id="open-project"
+                            class="primary link-button"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            >새 탭에서 열기 ↗</a
+                        >
+                        <button
+                            id="upload-next"
+                            class="settings-button"
+                            type="button"
+                        >
+                            수정한 파일 다시 선택
+                        </button>
+                    </section>
+                    <form id="upload-form" class="card" hidden>
+                        <p id="pwa-mode" class="pwa-notice" hidden>
+                            PWA 사용 중 · HTML만 올리면 템플릿에 자동
+                            적용됩니다.
+                        </p>
+                        <label class="file-label" for="file"
+                            >업로드할 파일</label
+                        >
+                        <label class="drop-zone" id="drop-zone" for="file">
+                            <span class="upload-icon" aria-hidden="true"
+                                >↑</span
+                            >
+                            <strong id="file-title"
+                                >파일 선택 또는 여기로 끌어놓기</strong
+                            >
+                            <span id="file-detail"
+                                >ZIP · HTML · HTM / 파일당 최대 256 MiB</span
+                            >
+                            <input
+                                id="file"
+                                type="file"
+                                accept=".zip,.html,.htm"
+                            />
+                        </label>
+                        <p class="muted note">
+                            같은 이름의 파일은 덮어쓰지 않고 새 이름으로
+                            보관합니다.
+                        </p>
+
+                        <div id="progress-area" hidden>
+                            <div class="progress-label">
+                                <span id="progress-label">전송 중</span
+                                ><span id="percent">0%</span>
+                            </div>
+                            <progress id="progress" max="100" value="0">
+                                0%
+                            </progress>
+                        </div>
+                        <div class="upload-actions">
+                            <button
+                                id="submit"
+                                class="primary"
+                                type="submit"
+                                disabled
+                            >
+                                업로드만 하기
+                            </button>
+                            <button
+                                id="submit-open"
+                                class="primary"
+                                type="submit"
+                                disabled
+                            >
+                                업로드 후 페이지 열기 →
+                            </button>
+                        </div>
+
+                        <p class="muted workflow-help">
+                            ‘업로드 후 페이지 열기’는 완료 후 현재 탭에서
+                            이동합니다. 뒤로 가면 관리 화면으로 돌아옵니다.
+                        </p>
+                        <button
+                            id="cancel"
+                            class="secondary"
+                            type="button"
+                            hidden
+                        >
+                            전송 취소
+                        </button>
+                    </form>
+                </section>
+                <section
+                    id="panel-files"
+                    class="tab-panel"
+                    role="tabpanel"
+                    aria-labelledby="tab-files"
+                    hidden
+                >
+                    <section
+                        id="management"
+                        class="card management"
+                        hidden
+                        aria-labelledby="management-title"
+                    >
+                        <div class="management-heading">
+                            <h2 id="management-title">적용 목록</h2>
+                            <button
+                                id="files-refresh"
+                                class="text-button"
+                                type="button"
+                            >
+                                목록 새로고침
+                            </button>
+                        </div>
+
+                        <p id="files-summary" class="muted">
+                            위에서 프로젝트를 선택해 주세요.
+                        </p>
+                        <p id="pwa-build" class="pwa-notice" hidden></p>
+                        <div id="files-list"></div>
+                        <button
+                            id="cleanup"
+                            class="cleanup-button"
+                            type="button"
+                            disabled
+                        >
+                            최신만 남기기
+                        </button>
+                        <p class="muted manage-note">
+                            원본 다운로드는 업로드했던 HTML·ZIP을 그대로
+                            저장합니다. 다운로드해도 적용 버전은 바뀌지
+                            않습니다. 보관 파일을 적용하면 수정일을 갱신해 최신
+                            파일로 선택합니다. 이미지·CSS·JavaScript와 하위
+                            폴더는 유지합니다.
+                        </p>
+                    </section>
+                </section>
+                <section
+                    id="panel-pwa"
+                    class="tab-panel"
+                    role="tabpanel"
+                    aria-labelledby="tab-pwa"
+                    hidden
+                >
+                    <div class="card pwa-card">
+                        <p id="pwa-empty" class="muted">
+                            프로젝트를 선택하면 PWA 설정을 바꿀 수 있습니다.
+                        </p>
+                        <fieldset id="pwa-settings" hidden>
+                            <legend>PWA 설정</legend>
+                            <label class="pwa-toggle"
+                                ><input id="pwa-enabled" type="checkbox" /><span
+                                    >PWA로 사용</span
+                                ></label
+                            >
+                            <p class="muted">
+                                공용 템플릿으로 설치 가능한 앱을 만듭니다.
+                                설정을 저장하면 바로 반영됩니다.
+                            </p>
+                            <div id="pwa-fields" hidden>
+                                <label for="pwa-name">앱 이름</label
+                                ><input
+                                    id="pwa-name"
+                                    type="text"
+                                    maxlength="80"
+                                    placeholder="앱 이름"
+                                />
+                                <label for="pwa-short-name">짧은 이름</label
+                                ><input
+                                    id="pwa-short-name"
+                                    type="text"
+                                    maxlength="30"
+                                    placeholder="홈 화면에 표시할 이름"
+                                />
+                                <label for="pwa-description">설명</label
+                                ><textarea
+                                    id="pwa-description"
+                                    rows="2"
+                                    maxlength="300"
+                                    placeholder="앱에 대한 간단한 설명"
+                                ></textarea>
+                                <div class="color-fields">
+                                    <label for="pwa-theme"
+                                        >테마 색상<input
+                                            id="pwa-theme"
+                                            type="color"
+                                            value="#245fd6" /></label
+                                    ><label for="pwa-background"
+                                        >배경 색상<input
+                                            id="pwa-background"
+                                            type="color"
+                                            value="#eef2f5"
+                                    /></label>
+                                </div>
+                                <p class="muted">
+                                    기존 아이콘이 있으면 유지하며, 없으면 기본
+                                    아이콘을 사용합니다.
+                                </p>
+                            </div>
+                            <button
+                                id="pwa-save"
+                                class="settings-button"
+                                type="button"
+                                disabled
+                            >
+                                PWA 설정 저장
+                            </button>
+                            <p
+                                id="pwa-save-state"
+                                class="muted"
+                                role="status"
+                            ></p>
+                        </fieldset>
+                    </div>
+                </section>
+                <section
+                    id="panel-share"
+                    class="tab-panel"
+                    role="tabpanel"
+                    aria-labelledby="tab-share"
+                    hidden
+                >
+                    <div class="card share-card">
+                        <span class="section-kicker">방문자용 링크</span>
+                        <h2>페이지 공유</h2>
+                        <p class="muted">
+                            공유 QR에는 프로젝트 주소만 담깁니다. 관리 권한은
+                            전달되지 않습니다.
+                        </p>
+                        <p id="share-current-name" class="muted">
+                            상단에서 프로젝트를 선택해 주세요.
+                        </p>
+                        <button
+                            id="share-project"
+                            class="settings-button"
+                            type="button"
+                            disabled
+                        >
+                            공유 QR 보기
+                        </button>
+                    </div>
+                    <div class="card device-card">
+                        <span class="section-kicker">나만 사용하는 연결</span>
+                        <h2>내 기기 연결</h2>
+                        <p class="muted">
+                            다른 휴대폰이나 PC에서도 같은 관리 화면을 엽니다.
+                            기존 주소와 인증 키를 그대로 사용합니다.
+                        </p>
+                        <div class="device-actions">
+                            <button
+                                id="manage-qr"
+                                class="settings-button"
+                                type="button"
+                                disabled
+                            >
+                                관리 QR 보기
+                            </button>
+                            <button
+                                id="manage-copy"
+                                class="settings-button"
+                                type="button"
+                                disabled
+                            >
+                                관리 링크 복사
+                            </button>
+                        </div>
+                        <p
+                            id="manage-copy-status"
+                            class="muted"
+                            role="status"
+                        ></p>
+                        <p class="private-note">
+                            관리 QR과 링크를 가진 사람은 파일을 업로드하고
+                            정리할 수 있습니다. 본인 기기에만 연결하세요.
+                        </p>
+                    </div>
+                </section>
+            </div>
+            <dialog id="cleanup-dialog" aria-labelledby="cleanup-title">
+                <h2 id="cleanup-title">최신 파일만 남길까요?</h2>
+                <p>유지할 파일: <strong id="cleanup-keep"></strong></p>
+                <p id="cleanup-summary"></p>
+                <ul id="cleanup-files"></ul>
+                <p class="muted">
+                    아래 확인 버튼을 누르면 표시된 HTML·ZIP 파일이 삭제됩니다.
+                    이미지와 다른 자원 파일은 유지됩니다.
+                </p>
+                <div class="dialog-actions">
+                    <button id="cleanup-cancel" class="secondary" type="button">
+                        취소</button
+                    ><button
+                        id="cleanup-confirm"
+                        class="danger-button"
+                        type="button"
+                    >
+                        확인 후 정리
+                    </button>
+                </div>
+            </dialog>
+            <dialog id="share-dialog" aria-labelledby="share-title">
+                <h2 id="share-title">공유 QR</h2>
+                <img id="share-image" alt="프로젝트 페이지를 여는 공유 QR" />
+                <p class="muted">
+                    방문자용 QR입니다. 관리 주소나 인증 키가 들어 있지 않습니다.
+                </p>
+                <p id="share-local-note" class="pwa-notice" hidden>
+                    현재는 PC 로컬 미리보기 주소입니다. 휴대폰이나 다른 사람에게
+                    공유하려면 PC에서 start로 외부 공유를 켠 뒤 공개 주소의 관리
+                    페이지를 사용하세요.
+                </p>
+                <label for="share-url">공개 프로젝트 주소</label>
+                <input id="share-url" type="url" readonly />
+                <div class="dialog-actions">
+                    <button id="share-close" class="secondary" type="button">
+                        닫기</button
+                    ><button
+                        id="share-copy"
+                        class="settings-button"
+                        type="button"
+                    >
+                        링크 복사
+                    </button>
+                </div>
+            </dialog>
+            <dialog id="manage-dialog" aria-labelledby="manage-title">
+                <h2 id="manage-title">내 기기 연결 · 비공개</h2>
+                <p class="private-note">
+                    본인 기기의 카메라로 스캔하세요. 방문자에게 전달하는 공유
+                    QR이 아닙니다.
+                </p>
+                <img
+                    id="manage-image"
+                    alt="본인 기기에서 관리 화면을 여는 비공개 QR"
+                    hidden
+                />
+                <p id="manage-local-note" class="pwa-notice" hidden>
+                    현재 링크는 이 PC의 로컬 주소입니다. 다른 기기로 연결하려면
+                    start로 외부 공유를 켜고 공개 주소의 관리 화면에서 다시
+                    연결하세요.
+                </p>
+                <label for="manage-url">비공개 관리 링크</label>
+                <input
+                    id="manage-url"
+                    type="url"
+                    readonly
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+                <div class="dialog-actions">
+                    <button id="manage-close" class="secondary" type="button">
+                        닫기</button
+                    ><button
+                        id="manage-dialog-copy"
+                        class="settings-button"
+                        type="button"
+                    >
+                        관리 링크 복사
+                    </button>
+                </div>
+            </dialog>
+            <footer>
+                인증 링크는 본인만 보관하세요. 다른 사람에게는 프로젝트 페이지
+                주소를 공유하세요.
+            </footer>
+        </main>
+    </body>
+</html>
