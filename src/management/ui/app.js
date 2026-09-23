@@ -2,6 +2,7 @@
 const $ = (id) => document.getElementById(id);
 let token = '';
 let selected = null;
+let cleanupSelection = null;
 let activeRequest = null;
 let authenticated = false;
 let fileState = null;
@@ -18,6 +19,24 @@ let activeTab = 'upload';
 let manageQrLoading = false;
 let manageQrRequest = 0;
 const limit = 256 * 1024 * 1024;
+const cleanupLimit = 32 * 1024 * 1024;
+const cleanupSupported =
+    typeof window.showOpenFilePicker === 'function' &&
+    typeof FileSystemHandle !== 'undefined' &&
+    typeof FileSystemHandle.prototype.remove === 'function';
+$('cleanup-choice').hidden = !cleanupSupported;
+$('file-cleanup-help').hidden = cleanupSupported;
+$('delete-original').checked = cleanupSupported;
+$('cleanup-hint').hidden = !cleanupSupported;
+async function fileDigest(file) {
+    const digest = await crypto.subtle.digest(
+        'SHA-256',
+        await file.arrayBuffer(),
+    );
+    return [...new Uint8Array(digest)]
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+}
 const isPwa = () => projectModes.get($('project').value) === true;
 const fileHint = () =>
     isPwa()
@@ -118,6 +137,12 @@ function updateSubmit() {
           ? '설정 저장 후 업로드'
           : '업로드만 하기';
     $('submit-open').disabled = $('submit').disabled;
+    $('drop-zone').disabled =
+        !authenticated ||
+        !$('project').value ||
+        !!activeRequest ||
+        managementBusy ||
+        filesLoading;
     $('submit-open').textContent = activeRequest
         ? '업로드 중…'
         : filesLoading
@@ -209,9 +234,10 @@ async function loadProjects() {
         updateSubmit();
     }
 }
-function choose(files) {
+function choose(files, cleanup = null) {
     if (activeRequest || managementBusy) return;
     selected = null;
+    cleanupSelection = null;
     $('result').hidden = true;
     $('file-title').textContent = '파일 선택 또는 여기로 끌어놓기';
     $('file-detail').textContent = fileHint();
@@ -244,12 +270,84 @@ function choose(files) {
         return;
     }
     selected = file;
+    cleanupSelection = cleanup;
     $('file-title').textContent = file.name;
     $('file-detail').textContent =
-        `${(file.size / 1024 / 1024).toFixed(2)} MiB · ${isPwa() ? 'PWA 배포본으로 적용' : /\.zip$/i.test(file.name) ? '압축 검사 후 자동 적용' : 'HTML 페이지로 적용'}`;
+        `${(file.size / 1024 / 1024).toFixed(2)} MiB · ${isPwa() ? 'PWA 배포본으로 적용' : /\.zip$/i.test(file.name) ? '압축 검사 후 자동 적용' : 'HTML 페이지로 적용'}${cleanup ? ' · 업로드 성공 후 이 원본 삭제' : ''}`;
     status('');
     updateSubmit();
 }
+async function selectCleanupFile() {
+    if (
+        !cleanupSupported ||
+        !authenticated ||
+        !$('project').value ||
+        activeRequest ||
+        managementBusy ||
+        filesLoading
+    )
+        return;
+    const project = $('project').value;
+    choose([]);
+    try {
+        const [handle] = await window.showOpenFilePicker({
+            multiple: false,
+            types: [
+                {
+                    description: 'HTML 파일',
+                    accept: { 'text/html': ['.html', '.htm'] },
+                },
+            ],
+        });
+        if (!handle || typeof handle.remove !== 'function')
+            throw new Error('이 파일의 원본 삭제를 지원하지 않습니다.');
+        if (
+            (await handle.requestPermission({ mode: 'readwrite' })) !==
+            'granted'
+        )
+            throw new Error(
+                '원본 삭제 권한을 허용해야 합니다. 일반 업로드는 위에서 선택할 수 있습니다.',
+            );
+        const file = await handle.getFile();
+        if ($('project').value !== project || activeRequest) return;
+        if (!/\.html?$/i.test(file.name) || file.size > cleanupLimit)
+            throw new Error(
+                '원본 정리는 32 MiB 이하의 HTML·HTM 파일에 사용할 수 있습니다.',
+            );
+        const digest = await fileDigest(file);
+        if ($('project').value !== project || activeRequest) return;
+        choose([file], {
+            handle,
+            project,
+            size: file.size,
+            lastModified: file.lastModified,
+            digest,
+        });
+        $('file').value = '';
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        status(
+            error.message || '원본 삭제용 파일을 선택하지 못했습니다.',
+            true,
+        );
+    }
+}
+function selectUploadFile() {
+    if ($('delete-original').checked && cleanupSupported)
+        void selectCleanupFile();
+    else $('file').click();
+}
+$('drop-zone').addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
+    selectUploadFile();
+});
+$('delete-original').addEventListener('change', () => {
+    $('cleanup-hint').hidden = !$('delete-original').checked;
+    if (selected) {
+        choose([]);
+        status('원본 정리 설정이 바뀌었습니다. 파일을 다시 선택해 주세요.');
+    }
+});
 const errors = {
     401: '인증 링크가 유효하지 않습니다. PC에서 표시한 비공개 관리 QR로 다시 열어 주세요.',
     403: '이 프로젝트나 파일명으로는 업로드할 수 없습니다.',
@@ -284,6 +382,8 @@ $('upload-form').addEventListener('submit', async (event) => {
         return;
     const project = $('project').value;
     const file = selected;
+    const cleanupForUpload = cleanupSelection;
+    let uploadSucceeded = false;
     const openAfterUpload = event.submitter?.id === 'submit-open';
     let readyToOpen = '';
     if (pwaDirty && $('pwa-enabled').checked && !/\.html?$/i.test(file.name)) {
@@ -380,6 +480,8 @@ $('upload-form').addEventListener('submit', async (event) => {
             if (
                 url.origin !== location.origin ||
                 url.pathname !== '/' + encodeURIComponent(project) + '/' ||
+                result.project !== project ||
+                result.size !== file.size ||
                 url.hash
             )
                 throw new Error('Invalid result URL');
@@ -400,6 +502,7 @@ $('upload-form').addEventListener('submit', async (event) => {
             $('file-detail').textContent = fileHint();
             status('최신 파일로 반영됐습니다. 페이지를 열어 확인하세요.');
             rememberProject(project);
+            uploadSucceeded = true;
             if (openAfterUpload) readyToOpen = projectPage(project, true);
             loadFiles();
             $('result').focus?.({ preventScroll: true });
@@ -408,6 +511,7 @@ $('upload-form').addEventListener('submit', async (event) => {
                 behavior: 'smooth',
             });
         } catch {
+            uploadSucceeded = false;
             status(
                 '서버 응답을 확인하지 못했습니다. 프로젝트 페이지에서 저장 여부를 확인해 주세요.',
                 true,
@@ -431,7 +535,7 @@ $('upload-form').addEventListener('submit', async (event) => {
             '전송을 취소했습니다. 저장이 진행 중이었다면 프로젝트에서 결과를 확인해 주세요.',
         ),
     );
-    xhr.addEventListener('loadend', () => {
+    xhr.addEventListener('loadend', async () => {
         activeRequest = null;
         $('project').disabled = false;
         $('file').disabled = false;
@@ -439,6 +543,27 @@ $('upload-form').addEventListener('submit', async (event) => {
         $('cancel').hidden = true;
         $('progress-area').hidden = true;
         updateSubmit();
+        if (uploadSucceeded && cleanupForUpload) {
+            try {
+                const current = await cleanupForUpload.handle.getFile();
+                if (
+                    current.name !== file.name ||
+                    current.size !== cleanupForUpload.size ||
+                    current.lastModified !== cleanupForUpload.lastModified ||
+                    (await fileDigest(current)) !== cleanupForUpload.digest
+                )
+                    throw new Error(
+                        '업로드 중 원본 파일이 변경되어 삭제하지 않았습니다.',
+                    );
+                await cleanupForUpload.handle.remove();
+                status('업로드를 완료하고 선택한 원본 파일을 삭제했습니다.');
+            } catch (error) {
+                status(
+                    `업로드는 완료했지만 원본 파일은 삭제하지 못했습니다. ${error.message || '파일 권한을 확인해 주세요.'}`,
+                    true,
+                );
+            }
+        }
         if (readyToOpen) {
             if (previewWindow && !previewWindow.closed) {
                 previewWindow.location.replace(readyToOpen);
@@ -451,18 +576,23 @@ $('upload-form').addEventListener('submit', async (event) => {
     });
     xhr.send(file);
 });
-$('file').addEventListener('change', (event) => choose(event.target.files));
+$('file').addEventListener('change', (event) => {
+    $('delete-original').checked = false;
+    $('cleanup-hint').hidden = true;
+    choose(event.target.files);
+});
 $('project').addEventListener('change', () => {
     $('result').hidden = true;
     rememberProject($('project').value);
     syncProjectMode();
+    if (cleanupSelection && selected) choose([selected]);
     loadFiles();
 });
 $('upload-next').addEventListener('click', () => {
     selectTab('upload');
     $('upload-form').scrollIntoView?.({ block: 'start', behavior: 'smooth' });
-    $('file').focus?.();
-    $('file').click();
+    $('drop-zone').focus?.();
+    selectUploadFile();
 });
 $('refresh').addEventListener('click', loadProjects);
 $('cancel').addEventListener('click', () => activeRequest?.abort());
@@ -476,9 +606,16 @@ for (const type of ['dragleave', 'drop'])
         event.preventDefault();
         $('drop-zone').classList.remove('dragging');
     });
-$('drop-zone').addEventListener('drop', (event) =>
-    choose(event.dataTransfer.files),
-);
+$('drop-zone').addEventListener('drop', (event) => {
+    const wasDeleting = $('delete-original').checked;
+    $('delete-original').checked = false;
+    $('cleanup-hint').hidden = true;
+    choose(event.dataTransfer.files);
+    if (wasDeleting && selected)
+        status(
+            '끌어놓은 파일은 원본 삭제 권한이 없어 일반 업로드로 선택했습니다.',
+        );
+});
 function formatSize(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     return bytes >= 1024 * 1024

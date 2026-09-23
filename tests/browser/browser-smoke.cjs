@@ -106,6 +106,26 @@ const { managementPath } = require('../../src/management/management-route.cjs');
         assert.equal(await page.locator('#upload-form').isVisible(), false);
         await page.goto(base + adminPath + '#key=' + token);
         await page.locator('#upload-form').waitFor({ state: 'visible' });
+        const cleanupPickerAvailable = await page.evaluate(
+            () =>
+                typeof window.showOpenFilePicker === 'function' &&
+                typeof FileSystemHandle !== 'undefined' &&
+                typeof FileSystemHandle.prototype.remove === 'function',
+        );
+        assert.equal(
+            await page
+                .locator('#cleanup-choice')
+                .evaluate((option) => option.hidden),
+            !cleanupPickerAvailable,
+        );
+        assert.equal(
+            await page.locator('#delete-original').isChecked(),
+            cleanupPickerAvailable,
+        );
+        assert.equal(
+            await page.locator('#cleanup-hint').evaluate((hint) => hint.hidden),
+            !cleanupPickerAvailable,
+        );
         assert.equal(
             await page.locator('#tab-upload').getAttribute('aria-selected'),
             'true',
@@ -198,7 +218,7 @@ const { managementPath } = require('../../src/management/management-route.cjs');
         await page.locator('#upload-next').click();
         assert.equal(
             await page.evaluate(() => document.activeElement?.id),
-            'file',
+            'drop-zone',
         );
         assert.match(
             await (await fetch(base + '/phone-demo/')).text(),
@@ -338,6 +358,10 @@ const { managementPath } = require('../../src/management/management-route.cjs');
         assert.equal(
             await page.locator('#file').getAttribute('accept'),
             '.html,.htm',
+        );
+        assert.equal(
+            await page.locator('#drop-zone').getAttribute('type'),
+            'button',
         );
         assert.match(
             await page.locator('#pwa-build').textContent(),

@@ -4,8 +4,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { webcrypto } = require('node:crypto');
 
-function harness({ popupBlocked = false } = {}) {
+function harness({ popupBlocked = false, cleanupPicker = false } = {}) {
+    let picker = null;
     const elements = new Map(),
         requests = [],
         uploads = [],
@@ -40,6 +42,7 @@ function harness({ popupBlocked = false } = {}) {
                 dataset: {},
                 listeners: {},
                 classList: { add() {}, remove() {}, toggle() {} },
+                clicks: 0,
                 addEventListener(type, fn) {
                     this.listeners[type] = fn;
                 },
@@ -53,6 +56,7 @@ function harness({ popupBlocked = false } = {}) {
                     document.activeElement = this;
                 },
                 click() {
+                    this.clicks++;
                     this.listeners.click?.({
                         currentTarget: this,
                         target: this,
@@ -101,6 +105,9 @@ function harness({ popupBlocked = false } = {}) {
         window: {
             location,
             history,
+            showOpenFilePicker: cleanupPicker
+                ? (...args) => picker(...args)
+                : undefined,
             open(url, target) {
                 if (popupBlocked) return null;
                 const popup = {
@@ -143,6 +150,10 @@ function harness({ popupBlocked = false } = {}) {
         Map,
         Option: function () {},
         XMLHttpRequest: Xhr,
+        crypto: webcrypto,
+        FileSystemHandle: class {
+            remove() {}
+        },
         fetch: (url, options) =>
             new Promise((resolve) => requests.push({ url, options, resolve })),
         setTimeout,
@@ -193,6 +204,9 @@ function harness({ popupBlocked = false } = {}) {
         location,
         document,
         windowListeners,
+        setPicker(fn) {
+            picker = fn;
+        },
     };
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -321,7 +335,7 @@ test('default upload stays while upload-and-open uses an isolated new tab and re
     assert.equal(stay.document.activeElement?.id, 'result');
     assert.match(stay.element('result-file').textContent, /page.html/);
     stay.element('upload-next').listeners.click();
-    assert.equal(stay.document.activeElement?.id, 'file');
+    assert.equal(stay.document.activeElement?.id, 'drop-zone');
     const open = harness();
     ready(open);
     open.element('submit-open').dataset.openProject = 'true';
@@ -546,4 +560,292 @@ test('tab selection is blocked while uploading and keyboard navigation works aft
         currentTarget: h.element('tab-share'),
     });
     assert.equal(h.element('panel-upload').hidden, false);
+});
+
+function cleanupFileHandle({ permission = 'granted' } = {}) {
+    let bytes = Buffer.alloc(100, 65);
+    let modified = 1234;
+    const calls = { permission: 0, getFile: 0, remove: 0 };
+    const handle = {
+        async requestPermission(options) {
+            assert.equal(options.mode, 'readwrite');
+            calls.permission++;
+            return permission;
+        },
+        async getFile() {
+            calls.getFile++;
+            const snapshot = Buffer.from(bytes);
+            return {
+                name: 'page.html',
+                size: snapshot.length,
+                lastModified: modified,
+                async arrayBuffer() {
+                    return snapshot.buffer.slice(
+                        snapshot.byteOffset,
+                        snapshot.byteOffset + snapshot.byteLength,
+                    );
+                },
+            };
+        },
+        async remove() {
+            calls.remove++;
+        },
+    };
+    return {
+        handle,
+        calls,
+        changeContent() {
+            bytes = Buffer.alloc(100, 66);
+        },
+        changeModified() {
+            modified++;
+        },
+    };
+}
+
+async function selectCleanupFile(h, fixture) {
+    h.setPicker(async () => [fixture.handle]);
+    h.element('delete-original').checked = true;
+    h.element('delete-original').listeners.change();
+    assert.equal(h.element('cleanup-hint').hidden, false);
+    await h.element('drop-zone').listeners.click({ isTrusted: true });
+    for (
+        let attempt = 0;
+        attempt < 100 && h.element('submit').disabled;
+        attempt++
+    )
+        await tick();
+    assert.equal(fixture.calls.permission, 1);
+    assert.equal(h.element('submit').disabled, false);
+    assert.match(h.element('file-detail').textContent, /삭제/);
+}
+
+test('cleanup selection removes the same original only after validated upload completion and still opens preview', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle();
+    ready(h);
+    await selectCleanupFile(h, fixture);
+    await h.element('upload-form').listeners.submit({
+        preventDefault() {},
+        submitter: h.element('submit-open'),
+    });
+    assert.equal(h.uploads.length, 1);
+    assert.equal(fixture.calls.remove, 0);
+    const xhr = h.uploads[0].xhr;
+    xhr.status = 201;
+    xhr.responseText = JSON.stringify({
+        project: 'A',
+        filename: 'page.html',
+        url: '/A/',
+        size: 100,
+    });
+    xhr.listeners.load();
+    assert.equal(fixture.calls.remove, 0, 'Do not remove before loadend');
+    await xhr.listeners.loadend();
+    assert.equal(fixture.calls.remove, 1);
+    assert.equal(h.popups.length, 1);
+    assert.equal(h.popups[0].closed, false);
+    assert.equal(new URL(h.popups[0].navigations[0]).pathname, '/A/');
+});
+
+test('cleanup selection preserves the original after rejected, cancelled, or invalid uploads', async () => {
+    for (const outcome of ['rejected', 'cancelled', 'invalid']) {
+        const h = harness({ cleanupPicker: true });
+        const fixture = cleanupFileHandle();
+        ready(h);
+        await selectCleanupFile(h, fixture);
+        await h
+            .element('upload-form')
+            .listeners.submit({ preventDefault() {} });
+        const xhr = h.uploads[0].xhr;
+        if (outcome === 'cancelled') h.element('cancel').listeners.click();
+        else {
+            xhr.status = outcome === 'rejected' ? 422 : 201;
+            xhr.responseText =
+                outcome === 'rejected' ? '{"error":"Rejected"}' : 'bad JSON';
+            xhr.listeners.load();
+            await xhr.listeners.loadend();
+        }
+        await tick();
+        assert.equal(fixture.calls.remove, 0, outcome);
+    }
+});
+
+test('cleanup selection preserves the original when a 2xx response describes another upload', async () => {
+    for (const result of [
+        { project: 'B', size: 100 },
+        { project: 'A', size: 101 },
+    ]) {
+        const h = harness({ cleanupPicker: true });
+        const fixture = cleanupFileHandle();
+        ready(h);
+        await selectCleanupFile(h, fixture);
+        await h
+            .element('upload-form')
+            .listeners.submit({ preventDefault() {} });
+        const xhr = h.uploads[0].xhr;
+        xhr.status = 201;
+        xhr.responseText = JSON.stringify({
+            ...result,
+            filename: 'page.html',
+            url: '/A/',
+        });
+        xhr.listeners.load();
+        await xhr.listeners.loadend();
+        assert.equal(fixture.calls.remove, 0);
+        assert.match(h.element('status').textContent, /응답/);
+    }
+});
+
+test('cleanup selection preserves an original that changes before upload completion', async () => {
+    for (const change of ['content', 'modified']) {
+        const h = harness({ cleanupPicker: true });
+        const fixture = cleanupFileHandle();
+        ready(h);
+        await selectCleanupFile(h, fixture);
+        await h
+            .element('upload-form')
+            .listeners.submit({ preventDefault() {} });
+        if (change === 'content') fixture.changeContent();
+        else fixture.changeModified();
+        const xhr = h.uploads[0].xhr;
+        xhr.status = 201;
+        xhr.responseText = JSON.stringify({
+            project: 'A',
+            filename: 'page.html',
+            url: '/A/',
+            size: 100,
+        });
+        xhr.listeners.load();
+        await xhr.listeners.loadend();
+        assert.equal(fixture.calls.remove, 0, change);
+        assert.match(h.element('status').textContent, /원본|변경|삭제/);
+    }
+});
+
+test('ordinary file selection never removes a previous cleanup handle', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle();
+    ready(h);
+    await selectCleanupFile(h, fixture);
+    const ordinary = await fixture.handle.getFile();
+    h.element('file').files = [ordinary];
+    h.element('file').listeners.change({ target: h.element('file') });
+    assert.doesNotMatch(h.element('file-detail').textContent, /원본 삭제/);
+    await h.element('upload-form').listeners.submit({ preventDefault() {} });
+    uploadResult(h.uploads[0].xhr);
+    await tick();
+    assert.equal(fixture.calls.remove, 0);
+});
+
+test('permission refusal leaves deletion disabled and ordinary upload available', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle({ permission: 'denied' });
+    ready(h);
+    h.setPicker(async () => [fixture.handle]);
+    h.element('delete-original').checked = true;
+    h.element('delete-original').listeners.change();
+    await h.element('drop-zone').listeners.click({ isTrusted: true });
+    for (
+        let attempt = 0;
+        attempt < 100 && h.element('submit').disabled;
+        attempt++
+    )
+        await tick();
+    assert.equal(fixture.calls.remove, 0);
+    const ordinary = await fixture.handle.getFile();
+    h.element('file').files = [ordinary];
+    h.element('file').listeners.change({ target: h.element('file') });
+    await h.element('upload-form').listeners.submit({ preventDefault() {} });
+    uploadResult(h.uploads[0].xhr);
+    await tick();
+    assert.equal(fixture.calls.remove, 0);
+});
+
+test('cleanup picker is hidden when the browser does not provide removable file handles', () => {
+    const h = harness();
+    assert.equal(h.element('cleanup-choice').hidden, true);
+    assert.equal(h.element('file-cleanup-help').hidden, false);
+    assert.equal(h.element('delete-original').checked, false);
+});
+
+test('one file button chooses exactly one picker according to the delete-original option', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle();
+    let cleanupPickerCalls = 0;
+    h.setPicker(async () => {
+        cleanupPickerCalls++;
+        return [fixture.handle];
+    });
+    ready(h);
+    h.element('delete-original').checked = false;
+    h.element('delete-original').listeners.change();
+    await h.element('drop-zone').listeners.click({ isTrusted: true });
+    assert.equal(h.element('file').clicks, 1);
+    assert.equal(cleanupPickerCalls, 0);
+    h.element('delete-original').checked = true;
+    h.element('delete-original').listeners.change();
+    await h.element('drop-zone').listeners.click({ isTrusted: true });
+    await tick();
+    assert.equal(h.element('file').clicks, 1);
+    assert.equal(cleanupPickerCalls, 1);
+    assert.equal(fixture.calls.permission, 1);
+});
+
+test('supported browsers initially select the removable-file picker', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle();
+    let cleanupPickerCalls = 0;
+    h.setPicker(async () => {
+        cleanupPickerCalls++;
+        return [fixture.handle];
+    });
+    ready(h);
+    assert.equal(h.element('cleanup-choice').hidden, false);
+    assert.equal(h.element('delete-original').checked, true);
+    assert.equal(h.element('cleanup-hint').hidden, false);
+    await h.element('drop-zone').listeners.click({ isTrusted: true });
+    for (
+        let attempt = 0;
+        attempt < 100 && h.element('submit').disabled;
+        attempt++
+    )
+        await tick();
+    assert.equal(cleanupPickerCalls, 1);
+    assert.equal(h.element('file').clicks, 0);
+    assert.equal(h.element('submit').disabled, false);
+});
+
+test('changing delete-original option clears a previously chosen file and requires reselection', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle();
+    ready(h);
+    await selectCleanupFile(h, fixture);
+    h.element('delete-original').checked = false;
+    h.element('delete-original').listeners.change();
+    assert.equal(h.run('selected'), null);
+    assert.equal(h.element('cleanup-hint').hidden, true);
+    assert.equal(h.element('submit').disabled, true);
+    assert.equal(h.run('cleanupSelection'), null);
+    assert.equal(fixture.calls.remove, 0);
+});
+
+test('dropping a file turns deletion off and uploads without removing the prior original', async () => {
+    const h = harness({ cleanupPicker: true });
+    const fixture = cleanupFileHandle();
+    ready(h);
+    await selectCleanupFile(h, fixture);
+    const ordinary = await fixture.handle.getFile();
+    h.element('drop-zone').listeners.drop({
+        preventDefault() {},
+        dataTransfer: { files: [ordinary] },
+    });
+    assert.equal(h.element('delete-original').checked, false);
+    assert.equal(h.element('cleanup-hint').hidden, true);
+    assert.equal(h.run('cleanupSelection'), null);
+    assert.match(h.element('status').textContent, /일반 업로드/);
+    await h.element('upload-form').listeners.submit({ preventDefault() {} });
+    uploadResult(h.uploads[0].xhr);
+    await tick();
+    assert.equal(fixture.calls.remove, 0);
 });

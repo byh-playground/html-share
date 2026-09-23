@@ -676,6 +676,21 @@ label,
     font-weight: 700;
     font-size: 14px;
 }
+.cleanup-choice {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.cleanup-choice input {
+    width: 19px;
+    height: 19px;
+    accent-color: #2553be;
+}
+#cleanup-hint {
+    margin: 0 0 10px 28px;
+}
 button,
 select,
 input {
@@ -716,6 +731,7 @@ select {
 .drop-zone {
     position: relative;
     display: flex;
+    width: 100%;
     align-items: center;
     justify-content: center;
     flex-direction: column;
@@ -727,6 +743,7 @@ select {
     border-radius: 14px;
     background: #f7faff;
     cursor: pointer;
+    color: #152436;
     overflow-wrap: anywhere;
 }
 .drop-zone:hover,
@@ -734,14 +751,6 @@ select {
 .drop-zone:focus-within {
     border-color: #2869d9;
     background: #edf4ff;
-}
-.drop-zone input {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
 }
 .drop-zone strong {
     max-width: 100%;
