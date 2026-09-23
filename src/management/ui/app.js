@@ -123,8 +123,8 @@ function updateSubmit() {
         : filesLoading
           ? '프로젝트 불러오는 중'
           : pwaDirty
-            ? '설정 저장·업로드 후 열기 →'
-            : '업로드 후 페이지 열기 →';
+            ? '설정 저장·업로드 후 열기 ↗'
+            : '업로드 후 페이지 열기 ↗';
     updateManagementControls();
 }
 function lock() {
@@ -286,15 +286,47 @@ $('upload-form').addEventListener('submit', async (event) => {
     const file = selected;
     const openAfterUpload = event.submitter?.id === 'submit-open';
     let readyToOpen = '';
+    if (pwaDirty && $('pwa-enabled').checked && !/\.html?$/i.test(file.name)) {
+        status(
+            'PWA 설정을 적용하려면 HTML 또는 HTM 파일을 선택해 주세요.',
+            true,
+        );
+        return;
+    }
+    // Reserve the preview during the click, before async work loses user activation.
+    const previewWindow = openAfterUpload
+        ? window.open('about:blank', '_blank')
+        : null;
+    if (previewWindow) {
+        previewWindow.opener = null;
+        previewWindow.document.open();
+        previewWindow.document.write(
+            `<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>업로드 중 · HTML Share</title>
+    <link rel="stylesheet" href="${new URL('./style.css', location.href).href}">
+</head>
+<body class="upload-wait">
+    <main class="upload-wait-content" role="status">
+        <span class="upload-wait-spinner" aria-hidden="true"></span>
+        <h1>업로드 중입니다</h1>
+        <p>완료되면 페이지가 자동으로 열립니다.</p>
+        <p class="upload-wait-hint">취소하려면 관리 탭으로 돌아가세요.</p>
+    </main>
+</body>
+</html>`,
+        );
+        previewWindow.document.close();
+    }
     if (pwaDirty) {
-        if ($('pwa-enabled').checked && !/\.html?$/i.test(file.name)) {
-            status(
-                'PWA 설정을 적용하려면 HTML 또는 HTM 파일을 선택해 주세요.',
-                true,
-            );
+        if (!(await savePwaSettings())) {
+            previewWindow?.close();
             return;
         }
-        if (!(await savePwaSettings())) return;
         if (
             !authenticated ||
             $('project').value !== project ||
@@ -302,8 +334,10 @@ $('upload-form').addEventListener('submit', async (event) => {
             filesLoading ||
             !pwaSettings ||
             settingsProject !== project
-        )
+        ) {
+            previewWindow?.close();
             return;
+        }
     }
     const xhr = new XMLHttpRequest();
     activeRequest = xhr;
@@ -367,14 +401,12 @@ $('upload-form').addEventListener('submit', async (event) => {
             status('최신 파일로 반영됐습니다. 페이지를 열어 확인하세요.');
             rememberProject(project);
             if (openAfterUpload) readyToOpen = projectPage(project, true);
-            else {
-                loadFiles();
-                $('result').focus?.({ preventScroll: true });
-                $('result').scrollIntoView?.({
-                    block: 'start',
-                    behavior: 'smooth',
-                });
-            }
+            loadFiles();
+            $('result').focus?.({ preventScroll: true });
+            $('result').scrollIntoView?.({
+                block: 'start',
+                behavior: 'smooth',
+            });
         } catch {
             status(
                 '서버 응답을 확인하지 못했습니다. 프로젝트 페이지에서 저장 여부를 확인해 주세요.',
@@ -407,7 +439,15 @@ $('upload-form').addEventListener('submit', async (event) => {
         $('cancel').hidden = true;
         $('progress-area').hidden = true;
         updateSubmit();
-        if (readyToOpen) window.location.assign(readyToOpen);
+        if (readyToOpen) {
+            if (previewWindow && !previewWindow.closed) {
+                previewWindow.location.replace(readyToOpen);
+            } else {
+                status(
+                    '업로드가 완료됐습니다. 새 탭을 열 수 없거나 대기 탭이 닫혔습니다. 아래 ‘지금 페이지 확인’을 눌러 새 탭에서 확인하세요.',
+                );
+            }
+        } else previewWindow?.close();
     });
     xhr.send(file);
 });

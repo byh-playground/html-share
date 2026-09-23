@@ -883,3 +883,51 @@ code {
     flex-wrap: wrap;
     align-items: center;
 }
+.upload-wait {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+}
+.upload-wait-content {
+    width: calc(100% - 40px);
+    max-width: 360px;
+    margin: 0;
+    text-align: center;
+    word-break: keep-all;
+}
+.upload-wait-content h1 {
+    margin: 20px 0 8px;
+    font-size: 22px;
+}
+.upload-wait-content p {
+    margin: 0;
+    color: #536780;
+    font-size: 14px;
+}
+.upload-wait-content .upload-wait-hint {
+    margin-top: 16px;
+    font-size: 12px;
+    color: #7a8798;
+}
+.upload-wait-spinner {
+    display: block;
+    width: 30px;
+    height: 30px;
+    margin: 0 auto;
+    border: 3px solid #dce4ef;
+    border-top-color: #2553be;
+    border-radius: 50%;
+    animation: upload-wait-spin 0.9s linear infinite;
+}
+@keyframes upload-wait-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .upload-wait-spinner {
+        animation: none;
+    }
+}

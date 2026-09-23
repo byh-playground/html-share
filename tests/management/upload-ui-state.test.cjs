@@ -5,11 +5,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function harness() {
+function harness({ popupBlocked = false } = {}) {
     const elements = new Map(),
         requests = [],
         uploads = [],
         navigations = [],
+        popups = [],
         windowListeners = {};
     const location = {
         hash: '',
@@ -100,6 +101,37 @@ function harness() {
         window: {
             location,
             history,
+            open(url, target) {
+                if (popupBlocked) return null;
+                const popup = {
+                    url,
+                    target,
+                    opener: {},
+                    closed: false,
+                    navigations: [],
+                    document: {
+                        html: '',
+                        closed: false,
+                        open() {},
+                        write(html) {
+                            this.html += html;
+                        },
+                        close() {
+                            this.closed = true;
+                        },
+                    },
+                    location: {
+                        replace(url) {
+                            popup.navigations.push(String(url));
+                        },
+                    },
+                    close() {
+                        this.closed = true;
+                    },
+                };
+                popups.push(popup);
+                return popup;
+            },
             addEventListener(type, fn) {
                 windowListeners[type] = fn;
             },
@@ -157,6 +189,7 @@ function harness() {
         settings,
         files,
         navigations,
+        popups,
         location,
         document,
         windowListeners,
@@ -273,7 +306,7 @@ function uploadResult(xhr, status = 201) {
     xhr.listeners.loadend();
 }
 
-test('default upload stays and focuses its result while upload-and-open uses credential-free current-tab URL', async () => {
+test('default upload stays while upload-and-open uses an isolated new tab and refreshes management', async () => {
     const stay = harness();
     ready(stay);
     await stay.element('upload-form').listeners.submit({
@@ -283,6 +316,7 @@ test('default upload stays and focuses its result while upload-and-open uses cre
     uploadResult(stay.uploads[0].xhr);
     await tick();
     assert.equal(stay.navigations.length, 0);
+    assert.equal(stay.popups.length, 0);
     assert.equal(stay.element('result').hidden, false);
     assert.equal(stay.document.activeElement?.id, 'result');
     assert.match(stay.element('result-file').textContent, /page.html/);
@@ -297,16 +331,40 @@ test('default upload stays and focuses its result while upload-and-open uses cre
     });
     uploadResult(open.uploads[0].xhr);
     await tick();
-    assert.equal(open.navigations.length, 1);
-    const url = new URL(open.navigations[0]);
+    assert.equal(open.navigations.length, 0);
+    assert.equal(open.popups.length, 1);
+    const popup = open.popups[0];
+    assert.equal(popup.url, 'about:blank');
+    assert.equal(popup.target, '_blank');
+    assert.equal(popup.opener, null);
+    assert.match(
+        popup.document.html,
+        /<meta\s+name=["']referrer["']\s+content=["']no-referrer["']/i,
+    );
+    assert.match(popup.document.html, /<title>/i);
+    assert.ok(!popup.document.html.includes('a'.repeat(64)));
+    assert.equal(popup.document.closed, true);
+    assert.equal(popup.closed, false);
+    assert.equal(popup.navigations.length, 1);
+    const url = new URL(popup.navigations[0]);
     assert.equal(url.pathname, '/A/');
     assert.ok(url.searchParams.has('hs_preview'));
     assert.equal(url.hash, '');
     assert.ok(!url.href.includes('a'.repeat(64)));
+    assert.equal(open.document.activeElement?.id, 'result');
+    assert.ok(
+        open.requests.some((request) => request.url.includes('/api/files?')),
+    );
 });
 
-test('upload-and-open failures and cancellation never navigate', async () => {
-    for (const outcome of ['failure', 'cancel']) {
+test('upload-and-open failures, cancellation, network errors and timeout close the waiting tab', async () => {
+    for (const outcome of [
+        'failure',
+        'cancel',
+        'error',
+        'timeout',
+        'invalid',
+    ]) {
         const h = harness();
         ready(h);
         h.element('submit-open').dataset.openProject = 'true';
@@ -315,10 +373,91 @@ test('upload-and-open failures and cancellation never navigate', async () => {
             submitter: h.element('submit-open'),
         });
         if (outcome === 'failure') uploadResult(h.uploads[0].xhr, 422);
-        else h.element('cancel').listeners.click();
+        else if (outcome === 'cancel') h.element('cancel').listeners.click();
+        else if (outcome === 'invalid') {
+            const xhr = h.uploads[0].xhr;
+            xhr.status = 201;
+            xhr.responseText = 'invalid JSON';
+            xhr.listeners.load();
+            xhr.listeners.loadend();
+        } else {
+            h.uploads[0].xhr.listeners[outcome]();
+            h.uploads[0].xhr.listeners.loadend();
+        }
         await tick();
         assert.equal(h.navigations.length, 0);
         assert.equal(h.run('activeRequest'), null);
+        assert.equal(h.popups.length, 1);
+        assert.equal(h.popups[0].closed, true, outcome);
+        assert.equal(h.popups[0].navigations.length, 0, outcome);
+    }
+});
+
+test('blocked or manually closed preview tabs leave a usable upload result in management', async () => {
+    for (const popupBlocked of [true, false]) {
+        const h = harness({ popupBlocked });
+        ready(h);
+        await h.element('upload-form').listeners.submit({
+            preventDefault() {},
+            submitter: h.element('submit-open'),
+        });
+        if (!popupBlocked) h.popups[0].close();
+        uploadResult(h.uploads[0].xhr);
+        await tick();
+        assert.equal(h.navigations.length, 0);
+        assert.equal(h.element('result').hidden, false);
+        assert.equal(h.document.activeElement?.id, 'result');
+        assert.match(h.element('status').textContent, /직접|눌러/);
+        assert.equal(new URL(h.element('open-latest').href).pathname, '/A/');
+        assert.ok(
+            h.requests.some((request) => request.url.includes('/api/files?')),
+        );
+        if (!popupBlocked) assert.equal(h.popups[0].navigations.length, 0);
+    }
+});
+
+test('upload-and-open reserves a tab before saving PWA settings and closes it if saving fails or state changes', async () => {
+    for (const outcome of ['success', 'failure', 'state-change']) {
+        const h = harness();
+        ready(h);
+        h.run(`$('pwa-name').value='New A';pwaDirty=true;`);
+        const pending = h.element('upload-form').listeners.submit({
+            preventDefault() {},
+            submitter: h.element('submit-open'),
+        });
+        assert.equal(
+            h.popups.length,
+            1,
+            'Tab must open before the first await',
+        );
+        assert.equal(h.popups[0].opener, null);
+        assert.equal(h.uploads.length, 0);
+        assert.equal(h.requests.length, 1);
+        if (outcome === 'failure') {
+            h.requests[0].resolve({ ok: false, status: 500 });
+        } else {
+            h.respond(h.requests[0], {
+                ...h.settings('New A'),
+                revision: 'saved',
+            });
+            await tick();
+            if (outcome === 'state-change')
+                h.run(`selected={name:'other.html',size:200};`);
+            for (const request of h.requests.slice(1))
+                h.respond(
+                    request,
+                    request.url.includes('/pwa?')
+                        ? h.settings('New A')
+                        : h.files('A'),
+                );
+        }
+        await pending;
+        assert.equal(h.popups[0].closed, outcome !== 'success');
+        assert.equal(h.uploads.length, outcome === 'success' ? 1 : 0);
+        if (outcome === 'success') {
+            uploadResult(h.uploads[0].xhr);
+            assert.equal(h.popups[0].navigations.length, 1);
+        }
     }
 });
 

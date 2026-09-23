@@ -514,11 +514,14 @@ const { managementPath } = require('../../src/management/management-route.cjs');
             mimeType: 'text/html',
             buffer: Buffer.from('<h1>REJECTED</h1>'),
         });
+        const failedPopupEvent = context.waitForEvent('page');
         await page.locator('#submit-open').click();
+        const failedPopup = await failedPopupEvent;
         await page.waitForFunction(() =>
             document.querySelector('#status').classList.contains('error'),
         );
         assert.equal(page.url(), privateUrl, 'Failed upload must not navigate');
+        if (!failedPopup.isClosed()) await failedPopup.waitForEvent('close');
         await page.unroute(uploadPattern, rejectUpload);
         let pendingUpload;
         const holdUpload = (route) => {
@@ -530,7 +533,9 @@ const { managementPath } = require('../../src/management/management-route.cjs');
             mimeType: 'text/html',
             buffer: Buffer.from('<h1>CANCELLED</h1>'),
         });
+        const cancelledPopupEvent = context.waitForEvent('page');
         await page.locator('#submit-open').click();
+        const cancelledPopup = await cancelledPopupEvent;
         assert.equal(await page.locator('#tab-files').isDisabled(), true);
         await page.locator('#cancel').click();
         await page.waitForFunction(() =>
@@ -541,6 +546,8 @@ const { managementPath } = require('../../src/management/management-route.cjs');
             privateUrl,
             'Cancelled upload must not navigate',
         );
+        if (!cancelledPopup.isClosed())
+            await cancelledPopup.waitForEvent('close');
         if (pendingUpload) await pendingUpload.abort().catch(() => {});
         await page.unroute(uploadPattern, holdUpload);
         await page.locator('#file').setInputFiles({
@@ -549,28 +556,41 @@ const { managementPath } = require('../../src/management/management-route.cjs');
             buffer: Buffer.from('<h1>DEBUG FLOW</h1>'),
         });
         const tabsBefore = context.pages().length;
+        const previewEvent = context.waitForEvent('page');
         await page.locator('#submit-open').click();
-        await page.waitForURL(
+        const preview = await previewEvent;
+        await preview.waitForURL(
             (url) =>
                 url.pathname === '/debug-demo/' &&
                 url.searchParams.has('hs_preview'),
         );
-        assert.match(await page.locator('body').innerText(), /DEBUG FLOW/);
-        assert.equal(new URL(page.url()).hash, '');
-        assert.ok(!page.url().includes(token));
-        assert.ok(!page.url().includes(adminPath));
-        assert.equal(await page.evaluate(() => window.opener), null);
+        assert.match(await preview.locator('body').innerText(), /DEBUG FLOW/);
+        assert.equal(new URL(preview.url()).hash, '');
+        assert.ok(!preview.url().includes(token));
+        assert.ok(!preview.url().includes(adminPath));
+        assert.equal(await preview.evaluate(() => window.opener), null);
+        assert.equal(await preview.evaluate(() => document.referrer), '');
+        assert.equal(
+            page.url(),
+            privateUrl,
+            'Management remains in its original tab',
+        );
         assert.equal(
             context.pages().length,
-            tabsBefore,
-            'Preview uses the current tab',
+            tabsBefore + 1,
+            'Preview opens in a new tab',
         );
-        await page.goBack();
+        await preview.close();
         await page.locator('#upload-form').waitFor({ state: 'visible' });
         await page.waitForFunction(
             () =>
                 document.querySelector('#project').value === 'debug-demo' &&
                 !document.querySelector('#pwa-settings').disabled,
+        );
+        assert.equal(await page.locator('#result').isVisible(), true);
+        assert.equal(
+            await page.evaluate(() => document.activeElement.id),
+            'result',
         );
         assert.match(
             await page.locator('#current-project').textContent(),
@@ -671,7 +691,7 @@ const { managementPath } = require('../../src/management/management-route.cjs');
         );
         await untrusted.close();
         console.log(
-            'Mobile UI passed: four-tab flow and keyboard navigation, 390/320px no overflow, draft/file retention, tab/project reload memory, upload-stay/open/back/cancel, QR/cleanup/PWA/offline, no storage credentials or page errors.',
+            'Mobile UI passed: four-tab flow and keyboard navigation, 390/320px no overflow, draft/file retention, tab/project reload memory, upload-stay/new-tab/cancel, isolated preview without referrer, QR/cleanup/PWA/offline, no storage credentials or page errors.',
         );
     } finally {
         if (browser) await browser.close();
