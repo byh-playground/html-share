@@ -361,8 +361,9 @@ test('default upload stays while upload-and-open uses an isolated new tab and re
     assert.equal(popup.closed, false);
     assert.equal(popup.navigations.length, 1);
     const url = new URL(popup.navigations[0]);
+    assert.equal(url.origin, 'http://localhost');
     assert.equal(url.pathname, '/A/');
-    assert.ok(url.searchParams.has('hs_preview'));
+    assert.equal(url.search, '');
     assert.equal(url.hash, '');
     assert.ok(!url.href.includes('a'.repeat(64)));
     assert.equal(open.document.activeElement?.id, 'result');
@@ -422,7 +423,8 @@ test('blocked or manually closed preview tabs leave a usable upload result in ma
         assert.equal(h.element('result').hidden, false);
         assert.equal(h.document.activeElement?.id, 'result');
         assert.match(h.element('status').textContent, /직접|눌러/);
-        assert.equal(new URL(h.element('open-latest').href).pathname, '/A/');
+        const latestUrl = new URL(h.element('open-latest').href);
+        assert.equal(latestUrl.href, 'http://localhost/A/');
         assert.ok(
             h.requests.some((request) => request.url.includes('/api/files?')),
         );

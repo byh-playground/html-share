@@ -585,11 +585,13 @@ const { managementPath } = require('../../src/management/management-route.cjs');
         const preview = await previewEvent;
         await preview.waitForURL(
             (url) =>
+                url.origin === base &&
                 url.pathname === '/debug-demo/' &&
-                url.searchParams.has('hs_preview'),
+                url.search === '' &&
+                url.hash === '',
         );
         assert.match(await preview.locator('body').innerText(), /DEBUG FLOW/);
-        assert.equal(new URL(preview.url()).hash, '');
+        assert.equal(preview.url(), `${base}/debug-demo/`);
         assert.ok(!preview.url().includes(token));
         assert.ok(!preview.url().includes(adminPath));
         assert.equal(await preview.evaluate(() => window.opener), null);
@@ -623,7 +625,7 @@ const { managementPath } = require('../../src/management/management-route.cjs');
         const currentLink = await page
             .locator('#current-open')
             .getAttribute('href');
-        assert.ok(new URL(currentLink, base).searchParams.has('hs_preview'));
+        assert.equal(new URL(currentLink, base).href, `${base}/debug-demo/`);
         await page.reload();
         await page.waitForFunction(
             () =>

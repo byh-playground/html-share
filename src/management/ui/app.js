@@ -101,13 +101,9 @@ function selectTab(name, focus = false) {
     if (focus) $('tab-' + name).focus?.();
     window.scrollTo?.({ top: 0, behavior: 'auto' });
 }
-function projectPage(project, fresh = false) {
-    const url = new URL(
-        '/' + encodeURIComponent(project) + '/',
-        location.origin,
-    );
-    if (fresh) url.searchParams.set('hs_preview', Date.now().toString());
-    return url.href;
+function projectPage(project) {
+    return new URL('/' + encodeURIComponent(project) + '/', location.origin)
+        .href;
 }
 function renderCurrentProject() {
     const project = $('project').value;
@@ -119,7 +115,7 @@ function renderCurrentProject() {
     $('current-build').textContent = fileState?.pwa?.build
         ? 'PWA 빌드 ' + fileState.pwa.build
         : '';
-    if (project) $('current-open').href = projectPage(project, true);
+    if (project) $('current-open').href = projectPage(project);
 }
 function updateSubmit() {
     $('submit').disabled =
@@ -494,7 +490,7 @@ $('upload-form').addEventListener('submit', async (event) => {
                 new Date().toLocaleTimeString('ko-KR') +
                 ' 적용 완료';
             $('open-project').href = url.href;
-            $('open-latest').href = projectPage(project, true);
+            $('open-latest').href = projectPage(project);
             $('result').hidden = false;
             $('file').value = '';
             selected = null;
@@ -503,7 +499,7 @@ $('upload-form').addEventListener('submit', async (event) => {
             status('최신 파일로 반영됐습니다. 페이지를 열어 확인하세요.');
             rememberProject(project);
             uploadSucceeded = true;
-            if (openAfterUpload) readyToOpen = projectPage(project, true);
+            if (openAfterUpload) readyToOpen = projectPage(project);
             loadFiles();
             $('result').focus?.({ preventScroll: true });
             $('result').scrollIntoView?.({
