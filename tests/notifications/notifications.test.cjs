@@ -244,6 +244,7 @@ test('API enqueues successful changes only and never waits for notification comp
         },
     );
     const pwa = {
+        projectsRoot: path.join(directory, 'projects'),
         directory: async (name) => path.join(root, name),
         enabled: async () => false,
         managed: async () => false,

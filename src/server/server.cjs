@@ -9,6 +9,7 @@ const {
 } = require('../projects/zip-projects.cjs');
 const { Uploads } = require('../management/upload.cjs');
 const { PwaProjects } = require('../pwa/pwa-projects.cjs');
+const { ProjectCatalog } = require('../projects/project-catalog.cjs');
 const {
     sourceType,
     compareSources,
@@ -60,6 +61,7 @@ const archives = new ZipProjects(cachePath, undefined, root);
 const runtime =
     process.env.HTML_SHARE_RUNTIME || path.join(repositoryRoot, '.runtime');
 const pwa = new PwaProjects(root, runtime);
+const catalog = new ProjectCatalog(root, pwa.projectsRoot);
 const uploads = new Uploads(root, runtime, undefined, pwa);
 const adminRoot = path.resolve(
     process.env.HTML_SHARE_ADMIN_ROOT ||
@@ -256,12 +258,14 @@ const server = http.createServer(async (req, res) => {
                 (entry) =>
                     entry.info.isDirectory() && !reservedProject(entry.name),
             );
-            const links = projects
-                .map(
-                    (entry) =>
-                        `<li><a href="./${encodeURIComponent(entry.name)}/">${escape(entry.name)}</a></li>`,
+            const links = (
+                await Promise.all(
+                    projects.map(async (entry) => {
+                        const label = await catalog.displayName(entry.name);
+                        return `<li><a href="./${encodeURIComponent(entry.name)}/">${escape(label)}</a></li>`;
+                    }),
                 )
-                .join('');
+            ).join('');
             const listing = page(
                 'HTML 프로젝트',
                 `<p>프로젝트를 선택하세요.</p><ul>${links}</ul>`,

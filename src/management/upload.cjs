@@ -21,6 +21,7 @@ const {
     sourceType,
 } = require('../projects/source-selection.cjs');
 const { notifyProjectUpdate } = require('../notifications/notifications.cjs');
+const { ProjectCatalog } = require('../projects/project-catalog.cjs');
 
 const component = (value) =>
     typeof value === 'string' &&
@@ -40,6 +41,7 @@ class Uploads {
                 root,
                 this.runtime,
             );
+        this.catalog = new ProjectCatalog(root, this.pwa.projectsRoot);
         if (inside(root, this.runtime))
             throw new Error('Upload runtime must be outside public');
         this.commits = Promise.resolve();
@@ -181,6 +183,7 @@ class Uploads {
         } catch {
             throw problem(400, 'Invalid JSON');
         }
+        if (settings === 'project') return body;
         if (
             !body ||
             typeof body.revision !== 'string' ||
@@ -512,10 +515,16 @@ class Uploads {
                     ),
                 );
             }
-            if (
-                url.pathname === '/upload/api/projects' &&
-                req.method === 'GET'
-            ) {
+            if (url.pathname === '/upload/api/projects') {
+                if (req.method === 'POST') {
+                    const body = await this.jsonBody(req, 'project');
+                    const created = await this.serialize(() =>
+                        this.catalog.create(body?.name, body?.displayName),
+                    );
+                    return reply(201, created);
+                }
+                if (req.method !== 'GET')
+                    throw problem(405, 'Method not allowed');
                 const projects = [];
                 for (const entry of await fs.readdir(this.root, {
                     withFileTypes: true,
@@ -526,6 +535,9 @@ class Uploads {
                         await this.project(entry.name);
                         projects.push({
                             name: entry.name,
+                            displayName: await this.catalog.displayName(
+                                entry.name,
+                            ),
                             ...((await this.pwa.enabled(entry.name))
                                 ? { pwa: true }
                                 : {}),

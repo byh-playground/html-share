@@ -201,7 +201,7 @@ test('opaque management routes stay private, authenticated and stable across res
                 await (
                     await fetch(base + route + 'api/projects', { headers })
                 ).json(),
-                { projects: [{ name: 'example' }] },
+                { projects: [{ name: 'example', displayName: 'example' }] },
             );
             assert.equal(
                 (

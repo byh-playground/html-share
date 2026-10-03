@@ -9,7 +9,7 @@
     },
     "scripts": {
         "start": "node src/server/server.cjs",
-        "test": "node --test tests/server/server.test.cjs tests/projects/zip-projects.test.cjs tests/management/upload.test.cjs tests/pwa/pwa-projects.test.cjs tests/management/upload-ui-state.test.cjs tests/management/management-route.test.cjs tests/sharing/qr.test.cjs tests/notifications/notifications.test.cjs tests/cli/commands.test.cjs tests/release/release.test.cjs tests/tunnel/quick-tunnel.test.cjs",
+        "test": "node --test tests/server/server.test.cjs tests/projects/zip-projects.test.cjs tests/management/upload.test.cjs tests/management/project-creation.test.cjs tests/pwa/pwa-projects.test.cjs tests/management/upload-ui-state.test.cjs tests/management/management-route.test.cjs tests/sharing/qr.test.cjs tests/notifications/notifications.test.cjs tests/cli/commands.test.cjs tests/release/release.test.cjs tests/tunnel/quick-tunnel.test.cjs",
         "test:browser": "node tests/browser/browser-smoke.cjs",
         "check": "node scripts/development/check-source.cjs",
         "format": "node scripts/development/format-source.cjs --write",

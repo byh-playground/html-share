@@ -43,15 +43,29 @@ function harness({ popupBlocked = false, cleanupPicker = false } = {}) {
                 listeners: {},
                 classList: { add() {}, remove() {}, toggle() {} },
                 clicks: 0,
+                open: false,
                 addEventListener(type, fn) {
                     this.listeners[type] = fn;
                 },
-                replaceChildren() {},
+                options: [],
+                replaceChildren(...children) {
+                    this.options = [...children];
+                    this.value = children[0]?.value ?? '';
+                },
                 querySelectorAll() {
                     return [];
                 },
                 append() {},
-                add() {},
+                add(option) {
+                    this.options.push(option);
+                },
+                reset() {},
+                showModal() {
+                    this.open = true;
+                },
+                close() {
+                    this.open = false;
+                },
                 focus() {
                     document.activeElement = this;
                 },
@@ -148,7 +162,10 @@ function harness({ popupBlocked = false, cleanupPicker = false } = {}) {
         URL,
         URLSearchParams,
         Map,
-        Option: function () {},
+        Option: function (text, value) {
+            this.text = text;
+            this.value = value;
+        },
         XMLHttpRequest: Xhr,
         crypto: webcrypto,
         FileSystemHandle: class {
@@ -210,6 +227,83 @@ function harness({ popupBlocked = false, cleanupPicker = false } = {}) {
     };
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+test('management UI creates and selects a project from an empty list', async () => {
+    const h = harness();
+    h.run(`token='a'.repeat(64);loadProjects()`);
+    h.respond(h.requests[0], { projects: [] });
+    await tick();
+    assert.equal(h.element('empty-projects').hidden, false);
+    assert.equal(h.element('project').disabled, true);
+    assert.equal(h.element('project-create').disabled, false);
+    h.element('project-create').listeners.click();
+    assert.equal(h.element('project-dialog').open, true);
+    h.element('project-name').value = 'bloom-rpg';
+    h.element('project-display-name').value = '블룸 · 수관 원정';
+    const pending = h.element('project-form').listeners.submit({
+        preventDefault() {},
+    });
+    assert.equal(h.requests[1].url, './api/projects');
+    assert.equal(h.requests[1].options.method, 'POST');
+    assert.deepEqual(JSON.parse(h.requests[1].options.body), {
+        name: 'bloom-rpg',
+        displayName: '블룸 · 수관 원정',
+    });
+    assert.equal(h.element('project-create-cancel').disabled, true);
+    h.respond(h.requests[1], { name: 'bloom-rpg' });
+    await tick();
+    assert.equal(h.element('project-dialog').open, false);
+    h.respond(h.requests[2], {
+        projects: [{ name: 'bloom-rpg', displayName: '블룸 · 수관 원정' }],
+    });
+    await tick();
+    for (const request of h.requests.slice(3))
+        h.respond(
+            request,
+            request.url.includes('/pwa?')
+                ? h.settings('bloom-rpg')
+                : h.files('bloom-rpg'),
+        );
+    await pending;
+    assert.equal(h.element('project').value, 'bloom-rpg');
+    assert.equal(h.element('project').disabled, false);
+    assert.equal(
+        h.element('project').options[1].text,
+        '블룸 · 수관 원정 (bloom-rpg)',
+    );
+    assert.equal(h.element('empty-projects').hidden, true);
+    assert.equal(h.document.activeElement?.id, 'drop-zone');
+    assert.equal(
+        new URLSearchParams(h.location.hash.slice(1)).get('project'),
+        'bloom-rpg',
+    );
+});
+
+test('duplicate or invalid project creation keeps the dialog open and existing project selected', async () => {
+    const h = harness();
+    h.run(
+        `authenticated=true;token='a'.repeat(64);$('project').value='rally-rts';`,
+    );
+    h.element('project-create').listeners.click();
+    h.element('project-name').value = 'Bad ID';
+    h.element('project-display-name').value = '블룸 · 수관 원정';
+    await h.element('project-form').listeners.submit({ preventDefault() {} });
+    assert.equal(h.requests.length, 0);
+    assert.match(h.element('project-create-error').textContent, /ID/);
+    h.element('project-name').value = 'bloom-rpg';
+    const pending = h.element('project-form').listeners.submit({
+        preventDefault() {},
+    });
+    h.requests[0].resolve({ ok: false, status: 409 });
+    await pending;
+    assert.equal(h.element('project-dialog').open, true);
+    assert.match(h.element('project-create-error').textContent, /이미 사용/);
+    assert.equal(h.element('project').value, 'rally-rts');
+    assert.equal(h.element('project-create-submit').disabled, false);
+    h.element('project-create-cancel').listeners.click();
+    assert.equal(h.element('project-dialog').open, false);
+    assert.equal(h.requests.length, 1);
+});
 
 test('switching projects cannot submit a previous unsaved PWA draft during delayed loading', async () => {
     const h = harness();

@@ -45,10 +45,23 @@
                     aria-label="현재 프로젝트"
                 >
                     <div class="field-heading">
-                        <label for="project">프로젝트</label
-                        ><button id="refresh" class="text-button" type="button">
-                            목록 새로고침
-                        </button>
+                        <label for="project">프로젝트</label>
+                        <div class="project-actions">
+                            <button
+                                id="project-create"
+                                class="text-button"
+                                type="button"
+                            >
+                                새 프로젝트
+                            </button>
+                            <button
+                                id="refresh"
+                                class="text-button"
+                                type="button"
+                            >
+                                목록 새로고침
+                            </button>
+                        </div>
                     </div>
                     <select id="project" form="upload-form" required disabled>
                         <option value="">프로젝트 불러오는 중…</option>
@@ -69,10 +82,71 @@
                     </div>
 
                     <p id="empty-projects" class="muted" hidden>
-                        아직 프로젝트가 없습니다. PC의 public 폴더 아래에
-                        프로젝트 폴더를 만든 뒤 목록을 새로고침하세요.
+                        아직 프로젝트가 없습니다. 위의 새 프로젝트를 눌러
+                        시작하세요.
                     </p>
                 </section>
+                <dialog
+                    id="project-dialog"
+                    aria-labelledby="project-dialog-title"
+                >
+                    <form id="project-form">
+                        <h2 id="project-dialog-title">새 프로젝트</h2>
+                        <p class="muted">
+                            주소에 사용할 ID와 목록에 표시할 이름을 입력하세요.
+                        </p>
+                        <label for="project-name">프로젝트 ID</label>
+                        <input
+                            id="project-name"
+                            name="name"
+                            type="text"
+                            required
+                            minlength="1"
+                            maxlength="64"
+                            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                            autocomplete="off"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            placeholder="bloom-rpg"
+                        />
+                        <p class="muted note">
+                            영문 소문자, 숫자, 하이픈만 사용합니다. 주소는 만든
+                            뒤 바꿀 수 없습니다.
+                        </p>
+                        <label for="project-display-name">표시 이름</label>
+                        <input
+                            id="project-display-name"
+                            name="displayName"
+                            type="text"
+                            required
+                            maxlength="80"
+                            autocomplete="off"
+                            placeholder="블룸 · 수관 원정"
+                        />
+                        <p
+                            id="project-create-error"
+                            class="project-create-error"
+                            role="alert"
+                            hidden
+                        ></p>
+                        <div class="dialog-actions">
+                            <button
+                                id="project-create-cancel"
+                                class="secondary"
+                                type="button"
+                            >
+                                취소
+                            </button>
+                            <button
+                                id="project-create-submit"
+                                class="primary"
+                                type="submit"
+                            >
+                                프로젝트 만들기
+                            </button>
+                        </div>
+                    </form>
+                </dialog>
                 <nav id="tab-bar" role="tablist" aria-label="프로젝트 작업">
                     <button
                         id="tab-upload"

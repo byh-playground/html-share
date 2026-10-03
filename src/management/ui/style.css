@@ -127,6 +127,28 @@
 .project-card .field-heading {
     margin-bottom: 8px;
 }
+.project-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    justify-content: flex-end;
+}
+#project-dialog input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #ccd6e1;
+    border-radius: 10px;
+    min-height: 48px;
+    padding: 12px 13px;
+    margin: 7px 0 12px;
+}
+.project-create-error {
+    color: #a33238;
+    background: #fff1f0;
+    border-radius: 9px;
+    padding: 10px 12px;
+}
 .project-card .current-project {
     margin-bottom: 0;
 }

@@ -93,7 +93,12 @@ test('authenticated uploads publish complete files into selected projects', asyn
                 await (
                     await fetch(base + api + 'projects', { headers })
                 ).json(),
-                { projects: [{ name: 'a' }, { name: 'b' }] },
+                {
+                    projects: [
+                        { name: 'a', displayName: 'a' },
+                        { name: 'b', displayName: 'b' },
+                    ],
+                },
             );
             await fs.writeFile(
                 path.join(runtime, 'upload-auth.json'),
@@ -772,8 +777,8 @@ test('PWA uploads compose immutable releases from private HTML sources', async (
                 await (await fetch(base + 'projects', { headers })).json(),
                 {
                     projects: [
-                        { name: 'alpha', pwa: true },
-                        { name: 'beta', pwa: true },
+                        { name: 'alpha', displayName: 'alpha', pwa: true },
+                        { name: 'beta', displayName: 'beta', pwa: true },
                     ],
                 },
             );

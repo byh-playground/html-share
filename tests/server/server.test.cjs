@@ -29,13 +29,24 @@ test('static HTML projects', async (t) => {
     );
     await put('alpha/style.css', 'body{color:red}');
     await put('beta/anything.HTML', 'BETA');
+    await fs.mkdir(path.join(fixture, 'projects', 'alpha'), {
+        recursive: true,
+    });
+    await fs.writeFile(
+        path.join(fixture, 'projects', 'alpha', 'project.json'),
+        JSON.stringify({ displayName: '알파 <프로젝트>' }),
+    );
     await put('.secret.html', 'PRIVATE');
     await fs.writeFile(path.join(fixture, 'outside.html'), 'OUTSIDE');
     const child = spawn(
         process.execPath,
         [path.join(repositoryRoot, 'src/server/server.cjs'), '0'],
         {
-            env: { ...process.env, HTML_SHARE_ROOT: root },
+            env: {
+                ...process.env,
+                HTML_SHARE_ROOT: root,
+                HTML_SHARE_PROJECTS_ROOT: path.join(fixture, 'projects'),
+            },
             stdio: ['ignore', 'pipe', 'pipe'],
         },
     );
@@ -95,6 +106,11 @@ test('static HTML projects', async (t) => {
             req.on('error', reject);
             req.end();
         });
+    await t.test('root listing uses escaped display names', async () => {
+        const listing = (await request('/')).body;
+        assert.match(listing, /href="\.\/alpha\/">알파 &lt;프로젝트&gt;<\/a>/);
+        assert.doesNotMatch(listing, /알파 <프로젝트>/);
+    });
     await t.test(
         'latest arbitrary filename beats index; projects stay separate',
         async () => {

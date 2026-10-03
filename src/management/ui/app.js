@@ -18,6 +18,7 @@ const tabNames = ['upload', 'files', 'pwa', 'share'];
 let activeTab = 'upload';
 let manageQrLoading = false;
 let manageQrRequest = 0;
+let projectCreating = false;
 const limit = 256 * 1024 * 1024;
 const cleanupLimit = 32 * 1024 * 1024;
 const cleanupSupported =
@@ -149,6 +150,7 @@ function updateSubmit() {
     updateManagementControls();
 }
 function lock() {
+    if ($('project-dialog').open) $('project-dialog').close();
     dismissManageDialog();
     authenticated = false;
     $('locked').hidden = false;
@@ -205,8 +207,12 @@ async function loadProjects() {
             new URLSearchParams(location.hash.slice(1)).get('project') ||
             $('project').value;
         $('project').replaceChildren(new Option('프로젝트를 선택하세요', ''));
-        for (const project of data.projects)
-            $('project').add(new Option(project.name, project.name));
+        for (const project of data.projects) {
+            const label = project.displayName
+                ? `${project.displayName} (${project.name})`
+                : project.name;
+            $('project').add(new Option(label, project.name));
+        }
         if (data.projects.some((project) => project.name === previous))
             $('project').value = previous;
         else if (data.projects.length === 1)
@@ -591,6 +597,77 @@ $('upload-next').addEventListener('click', () => {
     selectUploadFile();
 });
 $('refresh').addEventListener('click', loadProjects);
+$('project-create').addEventListener('click', () => {
+    if (!authenticated || projectCreating || activeRequest || managementBusy)
+        return;
+    $('project-form').reset();
+    $('project-create-error').hidden = true;
+    $('project-create-error').textContent = '';
+    $('project-dialog').showModal();
+    $('project-name').focus?.();
+});
+$('project-create-cancel').addEventListener('click', () => {
+    if (!projectCreating) $('project-dialog').close();
+});
+$('project-dialog').addEventListener('cancel', (event) => {
+    if (projectCreating) event.preventDefault();
+});
+$('project-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!authenticated || projectCreating || activeRequest || managementBusy)
+        return;
+    const name = $('project-name').value.trim();
+    const displayName = $('project-display-name').value.trim();
+    const errorLabel = $('project-create-error');
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name) || name.length > 64) {
+        errorLabel.textContent =
+            'ID는 영문 소문자, 숫자, 하이픈으로 입력해 주세요.';
+        errorLabel.hidden = false;
+        return;
+    }
+    if (!displayName || displayName.length > 80) {
+        errorLabel.textContent = '표시 이름을 1~80자로 입력해 주세요.';
+        errorLabel.hidden = false;
+        return;
+    }
+    errorLabel.hidden = true;
+    projectCreating = true;
+    $('project-create-submit').disabled = true;
+    $('project-create-cancel').disabled = true;
+    $('project-create-submit').textContent = '만드는 중…';
+    try {
+        await managementApi('./api/projects', { name, displayName });
+        $('project-dialog').close();
+        selected = null;
+        cleanupSelection = null;
+        $('file').value = '';
+        $('result').hidden = true;
+        rememberProject(name);
+        await loadProjects();
+        if ($('project').value === name) {
+            selectTab('upload');
+            $('drop-zone').focus?.();
+            status(
+                `${displayName} 프로젝트를 만들었습니다. 파일을 선택해 주세요.`,
+            );
+        }
+    } catch (error) {
+        errorLabel.textContent =
+            error.status === 409
+                ? '이미 사용 중인 프로젝트 ID입니다. 다른 ID를 입력해 주세요.'
+                : error.status === 400 || error.status === 422
+                  ? '프로젝트 ID 또는 표시 이름을 확인해 주세요.'
+                  : error.status === 401 || error.status === 403
+                    ? '관리 링크 인증이 만료됐습니다. 관리 링크로 다시 열어 주세요.'
+                    : '프로젝트를 만들지 못했습니다. 연결을 확인하고 다시 시도해 주세요.';
+        errorLabel.hidden = false;
+    } finally {
+        projectCreating = false;
+        $('project-create-submit').disabled = false;
+        $('project-create-cancel').disabled = false;
+        $('project-create-submit').textContent = '프로젝트 만들기';
+    }
+});
 $('cancel').addEventListener('click', () => activeRequest?.abort());
 for (const type of ['dragenter', 'dragover'])
     $('drop-zone').addEventListener(type, (event) => {
@@ -620,6 +697,8 @@ function formatSize(bytes) {
 }
 function updateManagementControls() {
     const busy = !!activeRequest || managementBusy || filesLoading;
+    $('project-create').disabled =
+        !authenticated || !!activeRequest || managementBusy || projectCreating;
     $('cleanup').disabled = busy || !fileState || fileState.cleanup.count === 0;
     $('files-refresh').disabled = busy || !authenticated || !$('project').value;
     $('share-project').disabled = busy || !authenticated || !$('project').value;
