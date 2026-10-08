@@ -28,7 +28,7 @@ HTML Share는 PC에서 실행한 웹 서버를 터널로 공개하고, 휴대폰
 - **서버:** Node.js 22.17 이상, 기본 HTTP 서버와 CommonJS 모듈
 - **관리 화면:** HTML·CSS·JavaScript, 별도 프런트엔드 빌드 과정 없음
 - **외부 접속:** Cloudflare Quick Tunnel 또는 ngrok
-- **검증:** Node 테스트 러너, Playwright, GitHub Actions
+- **검증:** Node 테스트 러너와 Playwright를 이용한 로컬 검증
 
 Windows 실행 도구를 제공하며 서버 테스트는 Windows·Linux를 대상으로 구성되어 있습니다. 서버 PC가 실행 중이고 인터넷에 연결되어 있어야 외부에서 사용할 수 있습니다.
 
@@ -57,7 +57,6 @@ tests/                      영역별 검증
     browser/                모바일 화면·업로드·PWA 브라우저 검증
 docs/                       사용 설명서와 설계 문서
 public/example/             기본 예제
-.github/workflows/          GitHub Actions 자동 검사
 ```
 
 루트에는 실행 진입점, 저장소 문서, 공통 설정만 둡니다. 서비스 기능은 `src/`, 별도로 실행하는 도구는 `scripts/` 아래에서 역할별로 관리하고, 테스트도 같은 관점으로 나눕니다. 예를 들어 관리 화면은 `src/management/ui/`, PWA 공용 자산은 `src/pwa/template/`에서 찾을 수 있습니다.
@@ -77,7 +76,7 @@ npm run test:browser
 
 들여쓰기는 **공백 4칸**이며 EditorConfig와 Prettier 설정을 공유합니다. `npm run format`은 공개 소스만 정렬하고 개인 업로드와 런타임 파일은 건드리지 않습니다.
 
-테스트는 임시 프로젝트와 가짜 인증 키를 사용합니다. GitHub Actions는 Windows·Linux의 Node.js 22·24 테스트와 브라우저 검사를 수행하며, 서비스를 배포하지 않습니다.
+테스트는 임시 프로젝트와 가짜 인증 키를 사용합니다. 이 저장소는 정적 Pages나 dist 산출물을 배포하지 않으므로 자동 GitHub Actions workflow를 두지 않으며, 필요한 검증은 개발 환경에서 위 명령으로 실행합니다.
 
 ## 문서
 
